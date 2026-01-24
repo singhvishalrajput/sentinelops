@@ -64,33 +64,6 @@ function Sidebar() {
           <span className="material-symbols-outlined">analytics</span>
           <span className="hidden lg:block font-semibold text-sm">Vulnerabilities</span>
         </Link>
-        <Link 
-          to="/assets" 
-          className={`flex items-center gap-4 px-3 py-3 rounded-xl group transition-all ${
-            isActive('/assets') ? 'sidebar-item-active' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-          }`}
-        >
-          <span className="material-symbols-outlined">cloud_circle</span>
-          <span className="hidden lg:block font-semibold text-sm">Asset Inventory</span>
-        </Link>
-        <Link 
-          to="/compliance" 
-          className={`flex items-center gap-4 px-3 py-3 rounded-xl group transition-all ${
-            isActive('/compliance') ? 'sidebar-item-active' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-          }`}
-        >
-          <span className="material-symbols-outlined">verified_user</span>
-          <span className="hidden lg:block font-semibold text-sm">Compliance</span>
-        </Link>
-        <Link 
-          to="/automation" 
-          className={`flex items-center gap-4 px-3 py-3 rounded-xl group transition-all ${
-            isActive('/automation') ? 'sidebar-item-active' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-          }`}
-        >
-          <span className="material-symbols-outlined">settings_suggest</span>
-          <span className="hidden lg:block font-semibold text-sm">Automation</span>
-        </Link>
       </nav>
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
         {/* Email Notification Registration */}
