@@ -9,12 +9,6 @@ function Header({ title, subtitle, actionButton, onScan, isScanning }) {
       </div>
       <div className="flex items-center gap-4">
         <DarkModeToggle />
-        <div className="relative">
-          <span className="absolute right-0 top-0 size-2 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
-          <button className="size-10 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
-        </div>
         {actionButton || (
           <button 
             onClick={onScan}
