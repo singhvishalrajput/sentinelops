@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background-off-white font-display text-slate-900 selection:bg-primary/20;
+  }
+}
+
+@layer utilities {
+  .glass-panel-light {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+  }
+  
+  .hero-grid {
+    background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px);
+    background-size: 40px 40px;
+  }
+  
+  .text-gradient {
+    background: linear-gradient(to right, #1d4ed8, #259df4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .sidebar-item-active {
+    background: rgba(29, 78, 216, 0.05);
+    color: #1d4ed8;
+    border-right: 3px solid #1d4ed8;
+  }
+  
+  .status-dot-critical {
+    background-color: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+  }
+  
+  .status-dot-high {
+    background-color: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+  }
+  
+  .heatmap-cell {
+    transition: all 0.2s;
+  }
+  
+  .heatmap-cell:hover {
+    transform: scale(1.05);
+    z-index: 10;
+  }
+
+  .step-arrow::after {
+    content: '';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(to right, #cbd5e1, transparent);
+    z-index: 10;
+  }
+
+  @media (max-width: 1024px) {
+    .step-arrow::after {
+      display: none;
+    }
+  }
+
+  .pro-glow {
+    box-shadow: 0 0 50px -10px rgba(29, 78, 216, 0.15);
+  }
+
+  @keyframes progress {
+    0% {
+      width: 0%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  .animate-progress {
+    animation: progress 2s ease-in-out infinite;
+  }
+}
