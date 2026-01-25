@@ -73,6 +73,7 @@ function Vulnerabilities() {
         <Header 
           title="Vulnerabilities" 
           subtitle="Detailed security findings and remediation guidance"
+          actionButton={<div></div>}
         />
         
         <div className="p-8 space-y-6">
@@ -98,10 +99,6 @@ function Vulnerabilities() {
                 {filteredVulnerabilities.length} finding{filteredVulnerabilities.length !== 1 ? 's' : ''}
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 hover:bg-blue-800 transition-all">
-              <span className="material-symbols-outlined !text-sm">download</span>
-              Export Report
-            </button>
           </div>
 
           {loading ? (
@@ -128,7 +125,7 @@ function Vulnerabilities() {
                       <div className={`size-3 mt-1 rounded-full ${getSeverityDot(vuln.severity)}`}></div>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{vuln.issue || vuln.title}</h3>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{vuln.issue || vuln.title || 'Security Issue'}</h3>
                           <span className={`text-xs font-bold px-2 py-1 rounded-full ${getSeverityColor(vuln.severity)}`}>
                             {vuln.severity}
                           </span>
@@ -137,7 +134,7 @@ function Vulnerabilities() {
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-                          {vuln.issue || 'No description available'}
+                          {vuln.description || 'Security vulnerability detected. Review the details below for more information.'}
                         </p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                           <div>
@@ -155,9 +152,38 @@ function Vulnerabilities() {
                             </span>
                           </div>
                         </div>
-                        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                          <p className="text-xs font-bold text-primary mb-1">Recommended Remediation:</p>
-                          <p className="text-sm text-slate-700 dark:text-slate-300">{vuln.remediation || 'No remediation information available'}</p>
+                        {/* Remediation Section */}
+                        <div className="mt-4 space-y-3">
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <p className="text-xs font-bold text-primary mb-2">Recommended Remediation:</p>
+                            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">
+                              {vuln.detailed_remediation || vuln.remediation || 'No remediation information available'}
+                            </p>
+                          </div>
+                          
+                          {/* AI-Enhanced Business Impact */}
+                          {vuln.business_impact && (
+                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800">
+                              <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2">Business Impact:</p>
+                              <p className="text-sm text-slate-700 dark:text-slate-300">{vuln.business_impact}</p>
+                            </div>
+                          )}
+                          
+                          {/* AI-Enhanced Prevention Tips */}
+                          {vuln.prevention_tips && (
+                            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800">
+                              <p className="text-xs font-bold text-green-700 dark:text-green-400 mb-2">Prevention Tips:</p>
+                              <p className="text-sm text-slate-700 dark:text-slate-300">{vuln.prevention_tips}</p>
+                            </div>
+                          )}
+                          
+                          {/* AI Enhanced Badge */}
+                          {vuln.ai_enhanced && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <span className="material-symbols-outlined !text-sm">auto_awesome</span>
+                              <span className="font-semibold">Enhanced with AI</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

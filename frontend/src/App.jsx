@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { DarkModeProvider } from './contexts/DarkModeContext'
+import ProtectedRoute from './components/ProtectedRoute'
 import Hero from './pages/Hero'
 import Dashboard from './pages/Dashboard'
 import Vulnerabilities from './pages/Vulnerabilities'
@@ -12,8 +13,24 @@ function App() {
         <Routes>
           <Route path="/" element={<Hero />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/vulnerabilities" element={<Vulnerabilities />} />
+          
+          {/* Protected Dashboard Routes - Require Authentication + AWS Account */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute requireAWSAccount={true}>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/vulnerabilities" 
+            element={
+              <ProtectedRoute requireAWSAccount={true}>
+                <Vulnerabilities />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </Router>
     </DarkModeProvider>

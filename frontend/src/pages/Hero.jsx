@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import DarkModeToggle from '../components/DarkModeToggle';
 import axios from 'axios';
 
@@ -7,6 +7,7 @@ const API_URL = 'http://localhost:5000/api';
 
 function Hero() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [showAWSModal, setShowAWSModal] = useState(false);
   const [awsFormData, setAwsFormData] = useState({
     accessKeyId: '',
@@ -15,6 +16,74 @@ function Hero() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [userStatus, setUserStatus] = useState({
+    isLoggedIn: false,
+    hasAWSAccount: false,
+    loading: true
+  });
+
+  // Check user authentication and AWS account status
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setUserStatus({ isLoggedIn: false, hasAWSAccount: false, loading: false });
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          const awsAccounts = response.data.user.awsAccounts || [];
+          setUserStatus({
+            isLoggedIn: true,
+            hasAWSAccount: awsAccounts.length > 0,
+            loading: false
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check user status:', error);
+        setUserStatus({ isLoggedIn: false, hasAWSAccount: false, loading: false });
+      }
+    };
+
+    checkUserStatus();
+    
+    // Auto-open AWS modal if redirected from protected route
+    if (searchParams.get('connect') === 'aws') {
+      setShowAWSModal(true);
+    }
+  }, [searchParams]);
+
+  const handlePrimaryAction = () => {
+    if (!userStatus.isLoggedIn) {
+      // Not logged in - go to login
+      navigate('/login');
+    } else if (!userStatus.hasAWSAccount) {
+      // Logged in but no AWS account - show connect modal
+      setShowAWSModal(true);
+    } else {
+      // Logged in with AWS account - go to dashboard
+      navigate('/dashboard');
+    }
+  };
+
+  const getPrimaryButtonText = () => {
+    if (userStatus.loading) return 'Loading...';
+    if (!userStatus.isLoggedIn) return 'Connect AWS Account';
+    if (!userStatus.hasAWSAccount) return 'Connect AWS Account';
+    return 'Go to Dashboard';
+  };
+
+  const getPrimaryButtonIcon = () => {
+    if (!userStatus.isLoggedIn) return 'cloud';
+    if (!userStatus.hasAWSAccount) return 'cloud';
+    return 'dashboard';
+  };
 
   const handleConnectAWS = () => {
     const token = localStorage.getItem('token');
@@ -70,10 +139,31 @@ function Hero() {
           <a className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors" href="#pricing">Pricing</a>
         </nav>
         <div className="flex items-center gap-4">
+          {userStatus.isLoggedIn && userStatus.hasAWSAccount && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+              <span className="size-2 rounded-full bg-green-500"></span>
+              <span className="text-xs font-bold text-green-700 dark:text-green-400">AWS Connected</span>
+            </div>
+          )}
           <DarkModeToggle />
-          <button className="bg-primary hover:bg-blue-800 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/20">
-            Get Started
-          </button>
+          {userStatus.isLoggedIn ? (
+            <button 
+              onClick={() => {
+                localStorage.removeItem('token');
+                window.location.reload();
+              }}
+              className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-5 py-2.5 rounded-lg text-sm font-bold transition-all"
+            >
+              Logout
+            </button>
+          ) : (
+            <button 
+              onClick={() => navigate('/login')}
+              className="bg-primary hover:bg-blue-800 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/20"
+            >
+              Login
+            </button>
+          )}
         </div>
       </header>
       
@@ -95,11 +185,12 @@ function Hero() {
             </p>
             <div className="flex flex-wrap gap-4 pt-4">
               <button 
-                onClick={handleConnectAWS}
-                className="flex items-center gap-2 bg-primary hover:bg-blue-800 text-white px-8 py-4 rounded-xl text-base font-bold transition-all shadow-xl shadow-primary/25"
+                onClick={handlePrimaryAction}
+                disabled={userStatus.loading}
+                className="flex items-center gap-2 bg-primary hover:bg-blue-800 text-white px-8 py-4 rounded-xl text-base font-bold transition-all shadow-xl shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined">cloud_sync</span>
-                Connect AWS Account
+                <span className="material-symbols-outlined">{getPrimaryButtonIcon()}</span>
+                {getPrimaryButtonText()}
               </button>
               <button className="flex items-center gap-2 border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl text-base font-bold transition-all">
                 <span className="material-symbols-outlined text-slate-400 dark:text-slate-500">play_circle</span>

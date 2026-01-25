@@ -12,6 +12,8 @@ function Dashboard() {
   const [showResults, setShowResults] = useState(false);
   const [awsAccounts, setAwsAccounts] = useState([]);
   const [scanResults, setScanResults] = useState(null);
+  const [scanId, setScanId] = useState(null); // Track scan ID for PDF download
+  const [scanHistory, setScanHistory] = useState([]); // Track scan history for trends
 
   const scanSteps = [
     { message: 'Initializing scan engine...', duration: 1000 },
@@ -24,6 +26,39 @@ function Dashboard() {
     { message: 'Generating risk assessment report...', duration: 1600 },
     { message: 'Finalizing results...', duration: 1000 }
   ];
+
+  // Fetch last scan results on component mount
+  useEffect(() => {
+    const fetchLastScanResults = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/scan/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success && response.data.scans && response.data.scans.length > 0) {
+          // Store all scans for historical trends
+          setScanHistory(response.data.scans.slice(0, 10)); // Last 10 scans
+          
+          const latestScan = response.data.scans[0];
+          if (latestScan.results) {
+            console.log('📊 Loading last scan results:', latestScan.results);
+            setScanResults(latestScan.results);
+            // Set pythonScanId if available for PDF download
+            if (latestScan.results.pythonScanId) {
+              setScanId(latestScan.results.pythonScanId);
+              console.log('🆔 Loaded scan ID:', latestScan.results.pythonScanId);
+            }
+            setShowResults(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching last scan:', error);
+      }
+    };
+
+    fetchLastScanResults();
+  }, []);
 
   // Fetch AWS accounts on component mount
   useEffect(() => {
@@ -49,7 +84,7 @@ function Dashboard() {
     }
 
     const criticalIssues = results?.findings?.filter(f => f.severity === 'CRITICAL') || [];
-    const criticalSummary = criticalIssues.slice(0, 4).map(issue => `- ${issue.title}`).join('\n');
+    const criticalSummary = criticalIssues.slice(0, 4).map(issue => `- ${issue.issue || issue.description || 'Security Issue'}`).join('\n');
 
     const templateParams = {
       to_email: notificationEmail,
@@ -89,6 +124,39 @@ All identified issues have been prioritized by severity. Please review the full 
       console.log('Email sent successfully:', response);
     } catch (error) {
       console.error('Email sending failed:', error);
+    }
+  };
+
+  const downloadReport = async () => {
+    if (!scanId) {
+      alert('No scan available for download. Please run a scan first.');
+      return;
+    }
+
+    try {
+      console.log('📥 Downloading PDF report for scan ID:', scanId);
+      
+      // Request PDF from Python backend
+      const response = await axios.get(
+        `http://localhost:5001/api/scan/${scanId}/download`,
+        {
+          responseType: 'blob' // Important for file download
+        }
+      );
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `security_report_${scanId}_${new Date().getTime()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      
+      console.log('✅ PDF report downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      alert('Failed to download report: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -140,8 +208,18 @@ All identified issues have been prioritized by severity. Please review the full 
 
       // Set scan results
       if (scanResponse.data.success) {
+        console.log('✅ Scan completed successfully!');
+        console.log('📊 Scan response:', scanResponse.data);
+        console.log('🆔 Scan ID (for PDF):', scanResponse.data.scan_id);
+        console.log('🆔 Python Scan ID:', scanResponse.data.pythonScanId);
+        
         setScanResults(scanResponse.data.results);
+        setScanId(scanResponse.data.scan_id || scanResponse.data.pythonScanId); // Save scan ID for PDF download
         setShowResults(true);
+        
+        console.log('💾 State updated - scanId:', scanResponse.data.scan_id || scanResponse.data.pythonScanId);
+        console.log('💾 State updated - scanResults:', !!scanResponse.data.results);
+        
         await sendEmailNotification(scanResponse.data.results);
       }
 
@@ -252,32 +330,199 @@ All identified issues have been prioritized by severity. Please review the full 
             </div>
           </div>
           
+          {/* Download Report Button - Show after scan completes */}
+          {(() => {
+            console.log('🔍 Download button check:', { 
+              hasScanResults: !!scanResults, 
+              hasScanId: !!scanId,
+              scanId: scanId,
+              shouldShow: !!(scanResults && scanId)
+            });
+            return scanResults && scanId;
+          })() && (
+            <div className="flex justify-center">
+              <button
+                onClick={downloadReport}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all transform hover:scale-105"
+              >
+                <span className="material-symbols-outlined">download</span>
+                Download Security Report (PDF)
+              </button>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+            <div className="lg:col-span-2 glass-panel p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white">Vulnerability Trends</h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">Detected vulnerabilities over the last 30 days</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    {scanHistory.length > 0 ? `Showing last ${scanHistory.length} scans` : 'No scan history available'}
+                  </p>
                 </div>
-                <select className="text-xs font-bold bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg px-2 py-1 outline-none">
-                  <option>Last 30 Days</option>
-                  <option>Last 7 Days</option>
-                </select>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <div className="size-2 rounded-full bg-red-500"></div>
+                    <span className="text-[10px] font-bold text-slate-400">Critical</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="size-2 rounded-full bg-amber-500"></div>
+                    <span className="text-[10px] font-bold text-slate-400">High</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="size-2 rounded-full bg-blue-500"></div>
+                    <span className="text-[10px] font-bold text-slate-400">Medium</span>
+                  </div>
+                </div>
               </div>
-              <div className="h-64 w-full">
-                <svg className="w-full h-full" viewBox="0 0 800 200">
-                  <defs>
-                    <linearGradient id="mainChartGradient" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#1d4ed8" stopOpacity="0.1"></stop>
-                      <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0"></stop>
-                    </linearGradient>
-                  </defs>
-                  <polyline fill="none" points="0,150 100,120 200,140 300,80 400,100 500,40 600,60 700,20 800,50" stroke="#1d4ed8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3"></polyline>
-                  <path d="M0,150 L100,120 L200,140 L300,80 L400,100 L500,40 L600,60 L700,20 L800,50 V200 H0 Z" fill="url(#mainChartGradient)"></path>
-                  <circle cx="300" cy="80" fill="#1d4ed8" r="4"></circle>
-                  <circle cx="500" cy="40" fill="#1d4ed8" r="4"></circle>
-                  <circle cx="700" cy="20" fill="#1d4ed8" r="4"></circle>
-                </svg>
+              <div className="h-64 w-full ">
+                {scanHistory.length > 0 ? (
+                  (() => {
+                    // Calculate dynamic scaling based on max values
+                    const scans = scanHistory.slice(0, 8).reverse();
+                    const maxCritical = Math.max(...scans.map(s => s.results?.criticalCount || 0), 1);
+                    const maxHigh = Math.max(...scans.map(s => s.results?.highCount || 0), 1);
+                    const maxMedium = Math.max(...scans.map(s => s.results?.mediumCount || 0), 1);
+                    const maxValue = Math.max(maxCritical, maxHigh, maxMedium, 5); // Minimum scale of 5
+                    
+                    // Dynamic scaling: spread data across 140px height
+                    const scale = 140 / maxValue;
+                    
+                    return (
+                      <svg className="w-full h-full" viewBox="0 0 800 220" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                          <linearGradient id="criticalGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2"></stop>
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0"></stop>
+                          </linearGradient>
+                          <linearGradient id="highGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.15"></stop>
+                            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0"></stop>
+                          </linearGradient>
+                          <linearGradient id="mediumGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1"></stop>
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"></stop>
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Grid lines */}
+                        {[20, 60, 100, 140].map(y => (
+                          <line key={y} x1="40" y1={20 + (140 - y)} x2="760" y2={20 + (140 - y)} stroke="currentColor" strokeWidth="0.5" className="text-slate-200 dark:text-slate-700" />
+                        ))}
+                        
+                        {/* Calculate points */}
+                        {(() => {
+                          const getX = (i) => {
+                            if (scans.length === 1) return 400; // Center single point
+                            return 40 + (i * 720) / (scans.length - 1);
+                          };
+                          
+                          const criticalPoints = scans.map((scan, i) => {
+                            const x = getX(i);
+                            const value = scan.results?.criticalCount || 0;
+                            const y = 160 - (value * scale);
+                            return { x, y: Math.max(20, Math.min(160, y)), value };
+                          });
+                          
+                          const highPoints = scans.map((scan, i) => {
+                            const x = getX(i);
+                            const value = scan.results?.highCount || 0;
+                            const y = 160 - (value * scale);
+                            return { x, y: Math.max(20, Math.min(160, y)), value };
+                          });
+                          
+                          const mediumPoints = scans.map((scan, i) => {
+                            const x = getX(i);
+                            const value = scan.results?.mediumCount || 0;
+                            const y = 160 - (value * scale);
+                            return { x, y: Math.max(20, Math.min(160, y)), value };
+                          });
+                          
+                          return (
+                            <>
+                              {/* Critical line and area */}
+                              <polyline
+                                fill="none"
+                                points={criticalPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                                stroke="#ef4444"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              {scans.length > 1 && (
+                                <path
+                                  d={`M${criticalPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')} L${criticalPoints[criticalPoints.length - 1].x},180 L${criticalPoints[0].x},180 Z`}
+                                  fill="url(#criticalGradient)"
+                                />
+                              )}
+                              
+                              {/* High line and area */}
+                              <polyline
+                                fill="none"
+                                points={highPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                                stroke="#f59e0b"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              {scans.length > 1 && (
+                                <path
+                                  d={`M${highPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')} L${highPoints[highPoints.length - 1].x},180 L${highPoints[0].x},180 Z`}
+                                  fill="url(#highGradient)"
+                                />
+                              )}
+                              
+                              {/* Medium line */}
+                              <polyline
+                                fill="none"
+                                points={mediumPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                                stroke="#3b82f6"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeDasharray="5,5"
+                              />
+                              
+                              {/* Data points and labels */}
+                              {scans.map((scan, i) => (
+                                <g key={i}>
+                                  {/* Critical point */}
+                                  <circle cx={criticalPoints[i].x} cy={criticalPoints[i].y} r="5" fill="#ef4444" stroke="#fff" strokeWidth="2" />
+                                  <text x={criticalPoints[i].x} y={criticalPoints[i].y - 10} fontSize="10" fill="#ef4444" textAnchor="middle" fontWeight="bold">
+                                    {criticalPoints[i].value}
+                                  </text>
+                                  
+                                  {/* High point */}
+                                  <circle cx={highPoints[i].x} cy={highPoints[i].y} r="4" fill="#f59e0b" />
+                                  <text x={highPoints[i].x + 15} y={highPoints[i].y + 4} fontSize="9" fill="#f59e0b" fontWeight="bold">
+                                    {highPoints[i].value}
+                                  </text>
+                                  
+                                  {/* Medium point */}
+                                  <circle cx={mediumPoints[i].x} cy={mediumPoints[i].y} r="4" fill="#3b82f6" />
+                                  <text x={mediumPoints[i].x - 15} y={mediumPoints[i].y + 4} fontSize="9" fill="#3b82f6" fontWeight="bold">
+                                    {mediumPoints[i].value}
+                                  </text>
+                                  
+                                  {/* Date label */}
+                                  <text x={criticalPoints[i].x} y="200" fontSize="9" fill="currentColor" textAnchor="middle" className="text-slate-400 dark:text-slate-500">
+                                    {new Date(scan.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </text>
+                                </g>
+                              ))}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    );
+                  })()
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                    <span className="material-symbols-outlined !text-5xl mb-3 opacity-30">query_stats</span>
+                    <p className="text-sm font-semibold">No trend data available</p>
+                    <p className="text-xs mt-1">Run multiple scans to see vulnerability trends</p>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -365,40 +610,108 @@ All identified issues have been prioritized by severity. Please review the full 
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white">Risk Heatmap</h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">Vulnerability density by resource type</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Vulnerability density by AWS service</p>
                 </div>
                 <div className="flex gap-2">
                   <div className="flex items-center gap-1">
                     <div className="size-2 rounded bg-red-500"></div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">Severe</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Critical</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="size-2 rounded bg-blue-100"></div>
+                    <div className="size-2 rounded bg-amber-400"></div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">High</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="size-2 rounded bg-blue-200"></div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Medium</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="size-2 rounded bg-slate-100 dark:bg-slate-700"></div>
                     <span className="text-[9px] font-bold text-slate-400 uppercase">Low</span>
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-2 h-64">
-                <div className="heatmap-cell bg-red-500 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">EC2</div>
-                <div className="heatmap-cell bg-red-400 rounded-lg"></div>
-                <div className="heatmap-cell bg-red-300 rounded-lg"></div>
-                <div className="heatmap-cell bg-amber-200 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-50 rounded-lg"></div>
-                <div className="heatmap-cell bg-red-400 rounded-lg"></div>
-                <div className="heatmap-cell bg-amber-400 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">S3</div>
-                <div className="heatmap-cell bg-amber-300 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-100 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-50 rounded-lg"></div>
-                <div className="heatmap-cell bg-amber-400 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">IAM</div>
-                <div className="heatmap-cell bg-amber-300 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-200 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-100 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-50 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-200 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-100 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-50 rounded-lg flex items-center justify-center text-slate-400 text-[10px] font-bold">RDS</div>
-                <div className="heatmap-cell bg-blue-50 rounded-lg"></div>
-                <div className="heatmap-cell bg-blue-50 rounded-lg"></div>
+              <div className="h-64">
+                {scanResults && scanResults.findings && scanResults.findings.length > 0 ? (
+                  (() => {
+                    // Calculate service risk scores
+                    const serviceRisks = {};
+                    scanResults.findings.forEach(finding => {
+                      const service = finding.service || 'Unknown';
+                      if (!serviceRisks[service]) {
+                        serviceRisks[service] = { critical: 0, high: 0, medium: 0, low: 0, total: 0 };
+                      }
+                      serviceRisks[service][finding.severity.toLowerCase()]++;
+                      serviceRisks[service].total++;
+                    });
+
+                    // Calculate risk score (weighted)
+                    const services = Object.entries(serviceRisks).map(([name, counts]) => ({
+                      name,
+                      score: (counts.critical * 10) + (counts.high * 5) + (counts.medium * 2) + counts.low,
+                      ...counts
+                    })).sort((a, b) => b.score - a.score);
+
+                    const maxScore = Math.max(...services.map(s => s.score), 1);
+
+                    // Get color based on risk score
+                    const getRiskColor = (score, max) => {
+                      const normalized = score / max;
+                      if (normalized > 0.7) return 'bg-red-500 text-white';
+                      if (normalized > 0.5) return 'bg-red-400 text-white';
+                      if (normalized > 0.4) return 'bg-amber-400 text-white';
+                      if (normalized > 0.3) return 'bg-amber-300 text-slate-900';
+                      if (normalized > 0.2) return 'bg-blue-300 text-slate-900';
+                      if (normalized > 0.1) return 'bg-blue-200 text-slate-900';
+                      return 'bg-slate-100 dark:bg-slate-700 text-slate-500';
+                    };
+
+                    return (
+                      <div className="space-y-3">
+                        {services.slice(0, 5).map((service) => (
+                          <div key={service.name} className="flex items-center gap-3">
+                            <div className="w-20 text-xs font-bold text-slate-900 dark:text-white truncate">
+                              {service.name}
+                            </div>
+                            <div className="flex-1 flex items-center gap-1">
+                              {/* Critical blocks */}
+                              {[...Array(service.critical)].map((_, i) => (
+                                <div key={`c-${i}`} className="h-10 flex-1 bg-red-500 rounded transition-all hover:scale-105 cursor-pointer" title={`Critical: ${service.critical}`}></div>
+                              ))}
+                              {/* High blocks */}
+                              {[...Array(service.high)].map((_, i) => (
+                                <div key={`h-${i}`} className="h-10 flex-1 bg-amber-400 rounded transition-all hover:scale-105 cursor-pointer" title={`High: ${service.high}`}></div>
+                              ))}
+                              {/* Medium blocks */}
+                              {[...Array(service.medium)].map((_, i) => (
+                                <div key={`m-${i}`} className="h-10 flex-1 bg-blue-300 rounded transition-all hover:scale-105 cursor-pointer" title={`Medium: ${service.medium}`}></div>
+                              ))}
+                              {/* Low blocks */}
+                              {[...Array(service.low)].map((_, i) => (
+                                <div key={`l-${i}`} className="h-10 flex-1 bg-slate-200 dark:bg-slate-700 rounded transition-all hover:scale-105 cursor-pointer" title={`Low: ${service.low}`}></div>
+                              ))}
+                            </div>
+                            <div className="w-12 text-right">
+                              <span className="text-xs font-bold text-slate-900 dark:text-white">{service.total}</span>
+                              <span className="text-[10px] text-slate-400 block">issues</span>
+                            </div>
+                          </div>
+                        ))}
+                        {services.length === 0 && (
+                          <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
+                            <p className="text-sm">No vulnerability data</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                    <span className="material-symbols-outlined !text-5xl mb-3 opacity-30">grid_on</span>
+                    <p className="text-sm font-semibold">No heatmap data</p>
+                    <p className="text-xs mt-1">Run a scan to visualize risk distribution</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
