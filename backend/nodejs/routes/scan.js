@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ScanHistory = require('../models/ScanHistory');
 const { protect } = require('../middleware/auth');
+const { sendSlackNotification } = require('../utils/slackNotifier');
 
 // @route   GET /api/scan/history
 // @desc    Get scan history for user
@@ -11,6 +12,13 @@ router.get('/history', protect, async (req, res) => {
     const scans = await ScanHistory.find({ userId: req.user._id })
       .sort({ startedAt: -1 })
       .limit(20);
+
+    console.log(`📜 Fetching scan history: Found ${scans.length} scans`);
+    if (scans.length > 0) {
+      const latestScan = scans[0];
+      console.log('🆕 Latest scan findings count:', latestScan.results?.findings?.length || 0);
+      console.log('🤖 Latest scan AI enhanced:', latestScan.results?.ai_enhanced_count || 0);
+    }
 
     res.status(200).json({
       success: true,
@@ -22,6 +30,29 @@ router.get('/history', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching scan history',
+      error: error.message
+    });
+  }
+});
+
+// @route   DELETE /api/scan/history/clear
+// @desc    Clear all scan history for user (for testing)
+// @access  Private
+router.delete('/history/clear', protect, async (req, res) => {
+  try {
+    const result = await ScanHistory.deleteMany({ userId: req.user._id });
+    console.log(`🗑️ Cleared ${result.deletedCount} scans for user`);
+    
+    res.status(200).json({
+      success: true,
+      message: `Cleared ${result.deletedCount} scans`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Clear scan history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error clearing scan history',
       error: error.message
     });
   }
@@ -108,10 +139,27 @@ router.post('/start', protect, async (req, res) => {
         totalAssets: scanData.findings.length,
         complianceScore: Math.max(0, 100 - (scanData.severity_breakdown.critical * 5) - 
                                            (scanData.severity_breakdown.high * 2)),
-        findings: scanData.findings,
-        pythonScanId: pythonScanId // Store Python scan ID for PDF download
+        findings: scanData.findings, // Includes all fields: remediation, detailed_remediation, business_impact, prevention_tips, ai_enhanced
+        pythonScanId: pythonScanId, // Store Python scan ID for PDF download
+        executive_summary: scanData.executive_summary, // AI-generated executive summary
+        ai_enhanced_count: scanData.ai_enhanced_count || 0, // Number of AI-enhanced findings
+        service_breakdown: scanData.service_breakdown, // Issues per service
+        severity_breakdown: scanData.severity_breakdown // Full severity breakdown
       };
+      
+      console.log('💾 Saving scan with', scanData.findings.length, 'findings');
+      console.log('🤖 AI enhanced:', scanData.ai_enhanced_count || 0, 'findings');
+      
       await scan.save();
+
+      // Send Slack notification (non-blocking)
+      sendSlackNotification({
+        results: scan.results,
+        duration: scan.duration,
+        scanType: scan.scanType
+      }, user).catch(err => {
+        console.error('Slack notification failed (non-critical):', err.message);
+      });
 
       res.status(201).json({
         success: true,

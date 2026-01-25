@@ -27,11 +27,23 @@ const ScanHistorySchema = new mongoose.Schema({
     findings: [{
       severity: String,
       title: String,
+      issue: String,
       description: String,
       resource: String,
       service: String,
-      region: String
-    }]
+      region: String,
+      remediation: String,
+      timestamp: String,
+      detailed_remediation: String,
+      business_impact: String,
+      prevention_tips: String,
+      ai_enhanced: Boolean
+    }],
+    pythonScanId: Number,
+    executive_summary: String,
+    ai_enhanced_count: Number,
+    service_breakdown: mongoose.Schema.Types.Mixed,
+    severity_breakdown: mongoose.Schema.Types.Mixed
   },
   awsAccountId: String,
   startedAt: {
