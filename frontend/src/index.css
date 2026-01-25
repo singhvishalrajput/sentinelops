@@ -132,4 +132,59 @@
   .animate-progress {
     animation: progress 2s ease-in-out infinite;
   }
+
+  @keyframes slide-in-right {
+    0% {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.4s ease-out;
+  }
+
+  /* Custom Scrollbar Styles - Hidden */
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .custom-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Community Rich Text Editor */
+  [contenteditable]:empty:before {
+    content: attr(placeholder);
+    @apply text-slate-400 dark:text-slate-500 pointer-events-none;
+  }
+
+  [contenteditable] {
+    @apply outline-none;
+  }
+
+  [contenteditable] blockquote {
+    @apply border-l-4 border-primary pl-4 italic text-slate-600 dark:text-slate-400 my-2;
+  }
+
+  [contenteditable] pre {
+    @apply bg-slate-100 dark:bg-slate-800 p-3 rounded-lg font-mono text-sm overflow-x-auto my-2;
+  }
+
+  [contenteditable] a {
+    @apply text-primary underline;
+  }
+
+  [contenteditable] ul {
+    @apply list-disc list-inside my-2;
+  }
+
+  [contenteditable] ol {
+    @apply list-decimal list-inside my-2;
+  }
 }

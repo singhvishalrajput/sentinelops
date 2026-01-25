@@ -64,6 +64,24 @@ function Sidebar() {
           <span className="material-symbols-outlined">analytics</span>
           <span className="hidden lg:block font-semibold text-sm">Vulnerabilities</span>
         </Link>
+        <Link 
+          to="/community" 
+          className={`flex items-center gap-4 px-3 py-3 rounded-xl group transition-all ${
+            isActive('/community') ? 'sidebar-item-active' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <span className="material-symbols-outlined">forum</span>
+          <span className="hidden lg:block font-semibold text-sm">Community</span>
+        </Link>
+        <Link 
+          to="/settings" 
+          className={`flex items-center gap-4 px-3 py-3 rounded-xl group transition-all ${
+            isActive('/settings') ? 'sidebar-item-active' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <span className="material-symbols-outlined">settings</span>
+          <span className="hidden lg:block font-semibold text-sm">Settings</span>
+        </Link>
       </nav>
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
         {/* Email Notification Registration */}

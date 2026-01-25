@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Hero from './pages/Hero'
 import Dashboard from './pages/Dashboard'
 import Vulnerabilities from './pages/Vulnerabilities'
+import Community from './pages/Community'
+import Settings from './pages/Settings'
 import Login from './pages/Login'
 
 function App() {
@@ -28,6 +30,22 @@ function App() {
             element={
               <ProtectedRoute requireAWSAccount={true}>
                 <Vulnerabilities />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/community" 
+            element={
+              <ProtectedRoute requireAWSAccount={false}>
+                <Community />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute requireAWSAccount={false}>
+                <Settings />
               </ProtectedRoute>
             } 
           />
