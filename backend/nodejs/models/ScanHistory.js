@@ -43,9 +43,16 @@ const ScanHistorySchema = new mongoose.Schema({
     executive_summary: String,
     ai_enhanced_count: Number,
     service_breakdown: mongoose.Schema.Types.Mixed,
-    severity_breakdown: mongoose.Schema.Types.Mixed
+    severity_breakdown: mongoose.Schema.Types.Mixed,
+    cloudProvider: String
   },
   awsAccountId: String,
+  azureAccountId: String,
+  cloudProvider: {
+    type: String,
+    enum: ['AWS', 'Azure', 'GCP'],
+    default: 'AWS'
+  },
   startedAt: {
     type: Date,
     default: Date.now

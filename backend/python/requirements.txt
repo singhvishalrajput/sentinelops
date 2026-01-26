@@ -3,5 +3,15 @@ flask==3.0.0
 flask-cors==4.0.0
 python-dotenv==1.0.0
 requests==2.31.0
-google-generativeai==0.3.2
 reportlab==4.0.9
+azure-identity==1.15.0
+azure-mgmt-storage==21.1.0
+azure-mgmt-compute==30.4.0
+azure-mgmt-network==25.2.0
+azure-mgmt-authorization==4.0.0
+azure-mgmt-resource==23.0.1
+azure-storage-blob==12.19.0
+google-cloud-compute==1.14.1
+google-cloud-storage==2.10.0
+google-cloud-container==2.35.0
+google-cloud-iam==2.12.1

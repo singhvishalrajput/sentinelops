@@ -60,6 +60,12 @@
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.8);
     box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.1);
   }
   
   .hero-grid {
@@ -78,10 +84,18 @@
     color: #1d4ed8;
     border-right: 3px solid #1d4ed8;
   }
+
+  @media (max-width: 1024px) {
+    .sidebar-item-active {
+      border-right: none;
+      border-left: 3px solid #1d4ed8;
+    }
+  }
   
   .status-dot-critical {
     background-color: #ef4444;
     box-shadow: 0 0 8px #ef4444;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
   
   .status-dot-high {
@@ -90,12 +104,48 @@
   }
   
   .heatmap-cell {
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .heatmap-cell:hover {
     transform: scale(1.05);
     z-index: 10;
+  }
+
+  /* Smooth page transitions */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Professional button press effect */
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+
+  /* Improved custom scrollbar for mobile */
+  @media (max-width: 768px) {
+    *::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+  }
+
+  /* Touch-friendly spacing */
+  @media (max-width: 640px) {
+    .custom-scrollbar {
+      -webkit-overflow-scrolling: touch;
+    }
   }
 
   .step-arrow::after {

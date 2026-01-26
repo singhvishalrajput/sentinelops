@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import DarkModeToggle from '../components/DarkModeToggle';
 import axios from 'axios';
+import { Shield, Cloud, PlayCircle, LayoutDashboard, RefreshCw, Radar, Brain, ShieldCheck, Gauge, Grid, Wand2, GitFork, Network, FileText, ChevronDown, X, CheckCircle, ArrowRight, BarChart3, AlertTriangle } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -83,9 +84,9 @@ function Hero() {
   };
 
   const getPrimaryButtonIcon = () => {
-    if (!userStatus.isLoggedIn) return 'cloud';
-    if (!userStatus.hasAWSAccount) return 'cloud';
-    return 'dashboard';
+    if (!userStatus.isLoggedIn) return <Cloud size={20} />;
+    if (!userStatus.hasAWSAccount) return <Cloud size={20} />;
+    return <LayoutDashboard size={20} />;
   };
 
   const handleConnectAWS = () => {
@@ -132,7 +133,7 @@ function Hero() {
       <header className="relative z-50 flex items-center justify-between px-6 py-6 mx-auto w-full max-w-7xl">
         <div className="flex items-center gap-2">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-            <span className="material-symbols-outlined !text-xl">shield</span>
+            <Shield size={20} />
           </div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">SentinelOps</h2>
         </div>
@@ -186,11 +187,11 @@ function Hero() {
                 disabled={userStatus.loading}
                 className="flex items-center gap-2 bg-primary hover:bg-blue-800 text-white px-8 py-4 rounded-xl text-base font-bold transition-all shadow-xl shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined">{getPrimaryButtonIcon()}</span>
+                {getPrimaryButtonIcon()}
                 {getPrimaryButtonText()}
               </button>
               <button className="flex items-center gap-2 border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl text-base font-bold transition-all">
-                <span className="material-symbols-outlined text-slate-400 dark:text-slate-500">play_circle</span>
+                <PlayCircle className="text-slate-400 dark:text-slate-500" size={20} />
                 View Live Demo
               </button>
             </div>
@@ -238,12 +239,12 @@ function Hero() {
                   </div>
                   <div className="h-4 w-px bg-slate-200 mx-2"></div>
                   <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <span className="material-symbols-outlined !text-sm">dashboard</span>
+                    <LayoutDashboard size={14} />
                     Production_Environment
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] font-black text-primary animate-pulse">
-                  <span className="material-symbols-outlined !text-sm">radar</span>
+                  <Radar size={14} />
                   SCANNING AWS...
                 </div>
               </div>
@@ -274,7 +275,7 @@ function Hero() {
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined !text-sm text-primary">analytics</span>
+                      <BarChart3 className="text-primary" size={14} />
                       Threat Activity (24h)
                     </h3>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Live Feed</span>
@@ -295,7 +296,7 @@ function Hero() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
                     <div className="size-8 rounded bg-red-50 dark:bg-red-900/30 flex items-center justify-center border border-red-100 dark:border-red-800">
-                      <span className="material-symbols-outlined !text-sm text-red-600 dark:text-red-400">warning</span>
+                      <AlertTriangle className="text-red-600 dark:text-red-400" size={14} />
                     </div>
                     <div className="flex-1">
                       <p className="text-[11px] font-bold text-slate-900 dark:text-white">S3 Bucket Exposed</p>
@@ -305,7 +306,7 @@ function Hero() {
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-white/40 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-700 opacity-80">
                     <div className="size-8 rounded bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center border border-emerald-100 dark:border-emerald-800">
-                      <span className="material-symbols-outlined !text-sm text-emerald-600 dark:text-emerald-400">verified_user</span>
+                      <ShieldCheck className="text-emerald-600 dark:text-emerald-400" size={14} />
                     </div>
                     <div className="flex-1">
                       <p className="text-[11px] font-bold text-slate-900 dark:text-white">IAM Policy Hardened</p>
@@ -319,7 +320,7 @@ function Hero() {
             <div className="absolute -bottom-6 -right-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-2xl animate-bounce duration-[3000ms]">
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center border border-emerald-100 dark:border-emerald-800">
-                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400">gpp_good</span>
+                  <ShieldCheck className="text-emerald-600 dark:text-emerald-400" size={20} />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">Environment Secure</p>
@@ -363,7 +364,10 @@ function Hero() {
                 {/* Icon Container */}
                 <div className="relative">
                   <div className="size-16 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/30 dark:to-sky-900/30 shadow-lg border-2 border-white dark:border-slate-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/10 transition-all duration-500">
-                    <span className="material-symbols-outlined text-primary !text-4xl group-hover:scale-110 transition-transform duration-500">cloud_sync</span>
+                    <div className="relative">
+                      <Cloud className="text-primary" size={32} />
+                      <RefreshCw className="text-primary absolute -bottom-1 -right-1" size={14} />
+                    </div>
                   </div>
                   
                   {/* Step Number Badge */}
@@ -393,7 +397,7 @@ function Hero() {
                 
                 <div className="relative">
                   <div className="size-16 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/30 dark:to-sky-900/30 shadow-lg border-2 border-white dark:border-slate-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/10 transition-all duration-500">
-                    <span className="material-symbols-outlined text-primary !text-4xl group-hover:scale-110 transition-transform duration-500">radar</span>
+                    <Radar className="text-primary group-hover:scale-110 transition-transform duration-500" size={32} />
                   </div>
                   
                   <div className="absolute -top-2 -right-2 size-10 bg-primary text-white rounded-xl flex items-center justify-center font-black text-lg shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-500">
@@ -421,7 +425,7 @@ function Hero() {
                 
                 <div className="relative">
                   <div className="size-16 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/30 dark:to-sky-900/30 shadow-lg border-2 border-white dark:border-slate-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/10 transition-all duration-500">
-                    <span className="material-symbols-outlined text-primary !text-4xl group-hover:scale-110 transition-transform duration-500">psychology</span>
+                    <Brain className="text-primary group-hover:scale-110 transition-transform duration-500" size={32} />
                   </div>
                   
                   <div className="absolute -top-2 -right-2 size-10 bg-primary text-white rounded-xl flex items-center justify-center font-black text-lg shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-500">
@@ -449,7 +453,7 @@ function Hero() {
                 
                 <div className="relative">
                   <div className="size-16 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/30 dark:to-sky-900/30 shadow-lg border-2 border-white dark:border-slate-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/10 transition-all duration-500">
-                    <span className="material-symbols-outlined text-primary !text-4xl group-hover:scale-110 transition-transform duration-500">verified_user</span>
+                    <ShieldCheck className="text-primary group-hover:scale-110 transition-transform duration-500" size={32} />
                   </div>
                   
                   <div className="absolute -top-2 -right-2 size-10 bg-primary text-white rounded-xl flex items-center justify-center font-black text-lg shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform duration-500">
@@ -483,48 +487,48 @@ function Hero() {
             </div>
             <button className="text-sm font-bold text-primary flex items-center gap-2 group">
               Explore all features
-              <span className="material-symbols-outlined !text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              <ArrowRight className="group-hover:translate-x-1 transition-transform" size={16} />
             </button>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="glass-panel-light dark:bg-slate-700/50 p-8 rounded-2xl border border-white dark:border-slate-600 hover:shadow-xl transition-all group">
               <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                <span className="material-symbols-outlined">shutter_speed</span>
+                <Gauge size={24} />
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Real-Time Detection</h4>
               <p className="text-slate-500 dark:text-slate-300 leading-relaxed">Identify threats within seconds of occurrence using our event-driven monitoring engine.</p>
             </div>
             <div className="glass-panel-light dark:bg-slate-700/50 p-8 rounded-2xl border border-white dark:border-slate-600 hover:shadow-xl transition-all group">
               <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                <span className="material-symbols-outlined">grid_view</span>
+                <Grid size={24} />
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Risk Heatmaps</h4>
               <p className="text-slate-500 dark:text-slate-300 leading-relaxed">Visual representation of vulnerability clusters across regions and account types.</p>
             </div>
             <div className="glass-panel-light dark:bg-slate-700/50 p-8 rounded-2xl border border-white dark:border-slate-600 hover:shadow-xl transition-all group">
               <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                <span className="material-symbols-outlined">auto_fix</span>
+                <Wand2 size={24} />
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Auto-Remediation</h4>
               <p className="text-slate-500 dark:text-slate-300 leading-relaxed">Automatically fix common misconfigurations before they can be exploited.</p>
             </div>
             <div className="glass-panel-light dark:bg-slate-700/50 p-8 rounded-2xl border border-white dark:border-slate-600 hover:shadow-xl transition-all group">
               <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                <span className="material-symbols-outlined">account_tree</span>
+                <GitFork size={24} />
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Graph-Based Analysis</h4>
               <p className="text-slate-500 dark:text-slate-300 leading-relaxed">Uncover hidden relationships and permission chains that create security gaps.</p>
             </div>
             <div className="glass-panel-light dark:bg-slate-700/50 p-8 rounded-2xl border border-white dark:border-slate-600 hover:shadow-xl transition-all group">
               <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                <span className="material-symbols-outlined">hub</span>
+                <Network size={24} />
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Multi-Cloud Support</h4>
               <p className="text-slate-500 dark:text-slate-300 leading-relaxed">A unified security pane for AWS, Azure, and Google Cloud environments.</p>
             </div>
             <div className="glass-panel-light dark:bg-slate-700/50 p-8 rounded-2xl border border-white dark:border-slate-600 hover:shadow-xl transition-all group">
               <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors text-primary">
-                <span className="material-symbols-outlined">description</span>
+                <FileText size={24} />
               </div>
               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Audit Readiness</h4>
               <p className="text-slate-500 dark:text-slate-300 leading-relaxed">One-click compliance reports that satisfy even the most rigorous security audits.</p>
@@ -555,19 +559,19 @@ function Hero() {
             </div>
             <ul className="space-y-4 mb-8 flex-1">
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-emerald-500">check_circle</span>
+                <CheckCircle className="text-emerald-500" size={18} />
                 1 AWS Account
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-emerald-500">check_circle</span>
+                <CheckCircle className="text-emerald-500" size={18} />
                 24-hour scan intervals
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-emerald-500">check_circle</span>
+                <CheckCircle className="text-emerald-500" size={18} />
                 Basic compliance reporting
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-emerald-500">check_circle</span>
+                <CheckCircle className="text-emerald-500" size={18} />
                 Community support
               </li>
             </ul>
@@ -589,23 +593,23 @@ function Hero() {
             </div>
             <ul className="space-y-4 mb-8 flex-1">
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                <span className="material-symbols-outlined !text-lg text-primary">check_circle</span>
+                <CheckCircle className="text-primary" size={18} />
                 Unlimited AWS Accounts
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                <span className="material-symbols-outlined !text-lg text-primary">check_circle</span>
+                <CheckCircle className="text-primary" size={18} />
                 Real-time scanning
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                <span className="material-symbols-outlined !text-lg text-primary">check_circle</span>
+                <CheckCircle className="text-primary" size={18} />
                 AI severity classification
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                <span className="material-symbols-outlined !text-lg text-primary">check_circle</span>
+                <CheckCircle className="text-primary" size={18} />
                 Auto-remediation workflows
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                <span className="material-symbols-outlined !text-lg text-primary">check_circle</span>
+                <CheckCircle className="text-primary" size={18} />
                 Priority 1-hour support
               </li>
             </ul>
@@ -623,19 +627,19 @@ function Hero() {
             </div>
             <ul className="space-y-4 mb-8 flex-1">
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-slate-400 dark:text-slate-500">check_circle</span>
+                <CheckCircle className="text-slate-400 dark:text-slate-500" size={18} />
                 Multi-cloud (Azure & GCP)
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-slate-400 dark:text-slate-500">check_circle</span>
+                <CheckCircle className="text-slate-400 dark:text-slate-500" size={18} />
                 Custom SSO & IAM integration
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-slate-400 dark:text-slate-500">check_circle</span>
+                <CheckCircle className="text-slate-400 dark:text-slate-500" size={18} />
                 SOC2/HIPAA Readiness Vault
               </li>
               <li className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                <span className="material-symbols-outlined !text-lg text-slate-400 dark:text-slate-500">check_circle</span>
+                <CheckCircle className="text-slate-400 dark:text-slate-500" size={18} />
                 Dedicated Account Manager
               </li>
             </ul>
@@ -654,7 +658,7 @@ function Hero() {
           <details className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors list-none">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Is my cloud data safe with SentinelOps?</h3>
-              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+              <ChevronDown className="text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform" size={20} />
             </summary>
             <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Yes. SentinelOps uses read-only cross-account IAM roles for scanning. We never store your actual cloud data—only metadata and configuration settings required for security posture assessment.
@@ -663,7 +667,7 @@ function Hero() {
           <details className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors list-none">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Which cloud platforms are supported?</h3>
-              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+              <ChevronDown className="text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform" size={20} />
             </summary>
             <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Currently, we offer deep integration for Amazon Web Services (AWS). Support for Google Cloud Platform (GCP) and Microsoft Azure is available for our Enterprise customers and will be rolling out to Pro users soon.
@@ -672,7 +676,7 @@ function Hero() {
           <details className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors list-none">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">How long does the initial scan take?</h3>
-              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+              <ChevronDown className="text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform" size={20} />
             </summary>
             <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Most environments are fully indexed within 15 minutes of connecting your account. You'll receive your first risk assessment report almost immediately after the indexing is complete.
@@ -681,7 +685,7 @@ function Hero() {
           <details className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors list-none">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Do you offer a free trial for Pro features?</h3>
-              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+              <ChevronDown className="text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform" size={20} />
             </summary>
             <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Yes, every new account starts with a 14-day free trial of our Pro features. No credit card is required to start your trial and explore real-time scanning and AI classification.
@@ -690,7 +694,7 @@ function Hero() {
           <details className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors list-none">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Can I export my compliance reports?</h3>
-              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+              <ChevronDown className="text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform" size={20} />
             </summary>
             <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Absolutely. Reports can be exported in PDF, CSV, or JSON formats. Pro and Enterprise users can also set up automated weekly report deliveries to Slack or Email.
@@ -699,7 +703,7 @@ function Hero() {
           <details className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors list-none">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Is there an API for automated remediations?</h3>
-              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">expand_more</span>
+              <ChevronDown className="text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform" size={20} />
             </summary>
             <div className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Yes, SentinelOps is built with an API-first philosophy. Our robust REST API allows you to trigger remediations, fetch risk data, and integrate security signals into your CI/CD pipelines.
@@ -716,7 +720,7 @@ function Hero() {
             <div className="md:col-span-12 lg:col-span-5 space-y-6">
               <div className="flex items-center gap-2">
                 <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                  <span className="material-symbols-outlined !text-xl">shield</span>
+                  <Shield size={20} />
                 </div>
                 <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">SentinelOps</h2>
               </div>
@@ -800,7 +804,7 @@ function Hero() {
                 onClick={() => setShowAWSModal(false)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                <span className="material-symbols-outlined">close</span>
+                <X size={24} />
               </button>
             </div>
 

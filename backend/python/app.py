@@ -5,7 +5,9 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from scanner import AWSSecurityScanner
-from gemini_enhancer import GeminiEnhancer
+from azure_scanner import AzureSecurityScanner
+from gcp_scanner import GCPSecurityScanner
+from mistral_enhancer import MistralEnhancer
 from pdf_generator import PDFReportGenerator
 
 # Load environment variables from .env file
@@ -18,8 +20,8 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Gemini enhancer and PDF generator
-gemini_enhancer = GeminiEnhancer()
+# Initialize Mistral enhancer and PDF generator
+mistral_enhancer = MistralEnhancer()
 pdf_generator = PDFReportGenerator()
 
 # Store scan history (in production, use a database)
@@ -78,13 +80,13 @@ def trigger_scan():
         # Run the scan
         scan_results = scanner.run_scan()
         
-        # Enhance with Gemini AI (if API key is configured)
-        logger.info("Enhancing scan results with Gemini AI...")
-        scan_results = gemini_enhancer.enhance_scan_results(scan_results)
-        
-        # Generate executive summary
-        executive_summary = gemini_enhancer.generate_executive_summary(scan_results)
+        # FAST AI: Only generate executive summary (skips individual findings for speed)
+        logger.info("Generating AI summary (fast mode)...")
+        executive_summary = mistral_enhancer.generate_executive_summary(scan_results)
         scan_results['executive_summary'] = executive_summary
+        
+        # Add cloud provider identifier
+        scan_results['cloudProvider'] = 'AWS'
         
         # Store in history
         scan_record = {
@@ -186,6 +188,57 @@ def download_scan_report(scan_id):
             'error': str(e)
         }), 500
 
+@app.route('/api/generate-pdf', methods=['POST'])
+def generate_pdf_from_results():
+    """
+    Generate PDF report from provided scan results
+    This endpoint accepts scan results directly from frontend based on current panel view
+    """
+    try:
+        data = request.json
+        scan_results = data.get('scanResults')
+        cloud_provider = data.get('cloudProvider', 'aws')
+        timestamp = data.get('timestamp', datetime.now().isoformat())
+        
+        if not scan_results:
+            return jsonify({
+                'success': False,
+                'error': 'No scan results provided'
+            }), 400
+        
+        # Add cloud provider info to results if not present
+        if 'cloudProvider' not in scan_results:
+            scan_results['cloudProvider'] = cloud_provider.upper()
+        
+        # Generate PDF filename
+        filename = f"{cloud_provider}_security_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        output_path = os.path.join(REPORTS_DIR, filename)
+        
+        logger.info(f"Generating PDF report for {cloud_provider.upper()}: {filename}")
+        logger.info(f"Scan results summary - Risk Score: {scan_results.get('riskScore', 'N/A')}, "
+                   f"Critical: {scan_results.get('criticalCount', 0)}, "
+                   f"High: {scan_results.get('highCount', 0)}")
+        
+        # Generate PDF using existing generator
+        pdf_generator.generate_report(scan_results, output_path)
+        
+        # Send file
+        return send_file(
+            output_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating PDF from results: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/test-connection', methods=['POST'])
 def test_aws_connection():
     """
@@ -233,6 +286,266 @@ def test_aws_connection():
             
     except Exception as e:
         logger.error(f"Error testing connection: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/azure/scan', methods=['POST'])
+def trigger_azure_scan():
+    """
+    Trigger Azure security scan with provided credentials
+    
+    Expected payload:
+    {
+        "subscription_id": "...",
+        "client_id": "...",
+        "tenant_id": "...",
+        "client_secret": "..."
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['subscription_id', 'client_id', 'tenant_id', 'client_secret']
+        if not data or not all(data.get(field) for field in required_fields):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required Azure credentials'
+            }), 400
+        
+        # Extract credentials
+        subscription_id = data.get('subscription_id')
+        client_id = data.get('client_id')
+        tenant_id = data.get('tenant_id')
+        client_secret = data.get('client_secret')
+        
+        logger.info(f"Starting Azure security scan for subscription: {subscription_id}")
+        
+        # Initialize scanner with provided credentials
+        scanner = AzureSecurityScanner(
+            subscription_id=subscription_id,
+            client_id=client_id,
+            tenant_id=tenant_id,
+            client_secret=client_secret
+        )
+        
+        # Run the scan
+        scan_results = scanner.run_scan()
+        
+        # FAST AI: Only generate executive summary (skips individual findings for speed)
+        logger.info("Generating AI summary (fast mode)...")
+        executive_summary = mistral_enhancer.generate_executive_summary(scan_results)
+        scan_results['executive_summary'] = executive_summary
+        
+        # Store in history
+        scan_record = {
+            'id': len(scan_history) + 1,
+            'timestamp': datetime.now().isoformat(),
+            'subscriptionId': subscription_id,
+            'cloudProvider': 'Azure',
+            'results': scan_results
+        }
+        scan_history.append(scan_record)
+        
+        logger.info(f"Azure scan completed. Found {scan_results['total_issues']} issues")
+        
+        return jsonify({
+            'success': True,
+            'scan_id': scan_record['id'],
+            'data': scan_results
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error during Azure scan: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/azure/test-connection', methods=['POST'])
+def test_azure_connection():
+    """
+    Test Azure connection with provided credentials
+    
+    Expected payload:
+    {
+        "subscription_id": "...",
+        "client_id": "...",
+        "tenant_id": "...",
+        "client_secret": "..."
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        required_fields = ['subscription_id', 'client_id', 'tenant_id', 'client_secret']
+        if not data or not all(data.get(field) for field in required_fields):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required Azure credentials'
+            }), 400
+        
+        subscription_id = data.get('subscription_id')
+        client_id = data.get('client_id')
+        tenant_id = data.get('tenant_id')
+        client_secret = data.get('client_secret')
+        
+        # Test connection
+        scanner = AzureSecurityScanner(
+            subscription_id=subscription_id,
+            client_id=client_id,
+            tenant_id=tenant_id,
+            client_secret=client_secret
+        )
+        
+        is_valid = scanner.test_connection()
+        
+        if is_valid:
+            return jsonify({
+                'success': True,
+                'message': 'Azure credentials are valid'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid Azure credentials or insufficient permissions'
+            }), 401
+            
+    except Exception as e:
+        logger.error(f"Error testing Azure connection: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/gcp/scan', methods=['POST'])
+def scan_gcp():
+    """
+    Perform security scan on GCP project
+    
+    Expected payload:
+    {
+        "project_id": "...",
+        "service_account_json": {...},
+        "region": "..."
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        required_fields = ['project_id', 'service_account_json']
+        if not data or not all(data.get(field) for field in required_fields):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required GCP credentials'
+            }), 400
+        
+        project_id = data.get('project_id')
+        service_account_json = data.get('service_account_json')
+        region = data.get('region', 'us-central1')
+        
+        logger.info(f"Starting GCP security scan for project: {project_id}")
+        
+        # Initialize scanner
+        scanner = GCPSecurityScanner(
+            project_id=project_id,
+            service_account_json=service_account_json,
+            region=region
+        )
+        
+        # Run the scan
+        scan_results = scanner.run_scan()
+        
+        # FAST AI: Only generate executive summary (skips individual findings for speed)
+        logger.info("Generating AI summary (fast mode)...")
+        executive_summary = mistral_enhancer.generate_executive_summary(scan_results)
+        scan_results['executive_summary'] = executive_summary
+        
+        # Add cloud provider identifier
+        scan_results['cloudProvider'] = 'GCP'
+        
+        # Normalize response to match AWS/Azure format for frontend compatibility
+        scan_results['criticalCount'] = scan_results.get('severity_breakdown', {}).get('critical', 0)
+        scan_results['highCount'] = scan_results.get('severity_breakdown', {}).get('high', 0)
+        scan_results['mediumCount'] = scan_results.get('severity_breakdown', {}).get('medium', 0)
+        scan_results['lowCount'] = scan_results.get('severity_breakdown', {}).get('low', 0)
+        scan_results['totalAssets'] = len(scan_results.get('service_breakdown', {}))
+        scan_results['complianceScore'] = max(0, 100 - (scan_results['total_issues'] * 5))  # Simple calculation
+        
+        # Store in history
+        scan_record = {
+            'id': len(scan_history) + 1,
+            'timestamp': datetime.now().isoformat(),
+            'projectId': project_id,
+            'cloudProvider': 'GCP',
+            'results': scan_results
+        }
+        scan_history.append(scan_record)
+        
+        logger.info(f"GCP scan completed. Found {scan_results['total_issues']} issues")
+        
+        return jsonify({
+            'success': True,
+            'data': scan_results
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error during GCP scan: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/gcp/test-connection', methods=['POST'])
+def test_gcp_connection():
+    """
+    Test GCP connection with provided credentials
+    
+    Expected payload:
+    {
+        "project_id": "...",
+        "service_account_json": {...},
+        "region": "..."
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        required_fields = ['project_id', 'service_account_json']
+        if not data or not all(data.get(field) for field in required_fields):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required GCP credentials'
+            }), 400
+        
+        project_id = data.get('project_id')
+        service_account_json = data.get('service_account_json')
+        region = data.get('region', 'us-central1')
+        
+        # Test connection
+        scanner = GCPSecurityScanner(
+            project_id=project_id,
+            service_account_json=service_account_json,
+            region=region
+        )
+        
+        is_valid = scanner.test_connection()
+        
+        if is_valid:
+            return jsonify({
+                'success': True,
+                'message': 'GCP credentials are valid'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid GCP credentials or insufficient permissions'
+            }), 401
+            
+    except Exception as e:
+        logger.error(f"Error testing GCP connection: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

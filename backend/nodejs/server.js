@@ -9,7 +9,10 @@ dotenv.config();
 // Import routes
 const authRoutes = require('./routes/auth');
 const awsRoutes = require('./routes/aws');
+const azureRoutes = require('./routes/azure');
+const gcpRoutes = require('./routes/gcp');
 const scanRoutes = require('./routes/scan');
+const communityRoutes = require('./routes/community');
 
 const app = express();
 
@@ -26,7 +29,10 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/aws', awsRoutes);
+app.use('/api/azure', azureRoutes);
+app.use('/api/gcp', gcpRoutes);
 app.use('/api/scan', scanRoutes);
+app.use('/api/community', communityRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

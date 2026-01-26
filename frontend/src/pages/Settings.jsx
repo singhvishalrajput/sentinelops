@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import axios from 'axios';
+import { Cloud, Trash2, PlusCircle, Info } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
 function Settings() {
   const [awsAccounts, setAwsAccounts] = useState([]);
   const [azureAccounts, setAzureAccounts] = useState([]);
+  const [gcpAccounts, setGcpAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('aws'); // 'aws' or 'azure'
+  const [activeTab, setActiveTab] = useState('aws'); // 'aws', 'azure', or 'gcp'
   
   // AWS Form
   const [awsForm, setAwsForm] = useState({
@@ -27,10 +29,14 @@ function Settings() {
     tenantId: '',
     clientSecret: ''
   });
-
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
+  
+  // GCP Form
+  const [gcpForm, setGcpForm] = useState({
+    projectName: '',
+    projectId: '',
+    serviceAccountJson: '',
+    region: ''
+  });
 
   const fetchAccounts = async () => {
     try {
@@ -48,12 +54,22 @@ function Settings() {
       });
       setAzureAccounts(azureResponse.data.accounts || []);
       
+      // Fetch GCP accounts
+      const gcpResponse = await axios.get(`${API_URL}/gcp/accounts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setGcpAccounts(gcpResponse.data.accounts || []);
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching accounts:', error);
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
 
   const handleAddAWSAccount = async (e) => {
     e.preventDefault();
@@ -125,6 +141,41 @@ function Settings() {
     }
   };
 
+  const handleAddGCPAccount = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/gcp/connect`,
+        gcpForm,
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      if (response.data.success) {
+        alert('GCP project connected successfully!');
+        setGcpForm({ projectName: '', projectId: '', serviceAccountJson: '', region: '' });
+        fetchAccounts();
+      }
+    } catch (error) {
+      alert('Failed to connect GCP project: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleDeleteGCPAccount = async (projectId) => {
+    if (!confirm('Are you sure you want to remove this GCP project?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/gcp/disconnect/${projectId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('GCP project removed successfully');
+      fetchAccounts();
+    } catch (error) {
+      alert('Failed to remove GCP project: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       <Sidebar />
@@ -133,38 +184,6 @@ function Settings() {
         
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-5xl mx-auto space-y-6">
-            
-            {/* Account Connection Status Banner */}
-            <div className="bg-gradient-to-r from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-800">
-              <div className="flex items-center gap-4">
-                <div className="size-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
-                  <span className="material-symbols-outlined !text-2xl">cloud</span>
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white">Cloud Account Status</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                    {awsAccounts.length === 0 && azureAccounts.length === 0 && 'No cloud accounts connected. Connect at least one to start scanning.'}
-                    {awsAccounts.length > 0 && azureAccounts.length === 0 && `${awsAccounts.length} AWS account(s) connected. Add Azure for multi-cloud coverage.`}
-                    {awsAccounts.length === 0 && azureAccounts.length > 0 && `${azureAccounts.length} Azure subscription(s) connected. Add AWS for multi-cloud coverage.`}
-                    {awsAccounts.length > 0 && azureAccounts.length > 0 && `${awsAccounts.length} AWS + ${azureAccounts.length} Azure accounts connected. Full multi-cloud coverage!`}
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <div className="text-center">
-                    <div className={`text-3xl font-black ${awsAccounts.length > 0 ? 'text-green-500' : 'text-slate-300 dark:text-slate-600'}`}>
-                      {awsAccounts.length > 0 ? '✓' : '○'}
-                    </div>
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">AWS</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-3xl font-black ${azureAccounts.length > 0 ? 'text-green-500' : 'text-slate-300 dark:text-slate-600'}`}>
-                      {azureAccounts.length > 0 ? '✓' : '○'}
-                    </div>
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">Azure</div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Tab Selector */}
             <div className="flex gap-3 border-b border-slate-200 dark:border-slate-800">
@@ -211,6 +230,28 @@ function Settings() {
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0078D4]"></div>
                 )}
               </button>
+              
+              <button
+                onClick={() => setActiveTab('gcp')}
+                className={`flex items-center gap-2 px-6 py-3 font-bold transition-all relative ${
+                  activeTab === 'gcp'
+                    ? 'text-[#4285F4]'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.19 2.38a9.344 9.344 0 0 1 9.431 9.431 9.31 9.31 0 0 1-2.828 6.746 9.31 9.31 0 0 1-6.603 2.685h-.03a9.343 9.343 0 0 1-6.649-2.73 9.31 9.31 0 0 1-2.744-6.702 9.345 9.345 0 0 1 9.423-9.43zm-.238 2.757a6.585 6.585 0 0 0-6.588 6.588c0 1.773.701 3.385 1.84 4.552l1.208-1.208a4.877 4.877 0 0 1-1.404-3.344 4.882 4.882 0 0 1 4.883-4.883c1.296 0 2.46.511 3.344 1.346l1.209-1.209a6.584 6.584 0 0 0-4.492-1.842zm.06 2.61a3.894 3.894 0 0 0-2.771 1.15 3.921 3.921 0 0 0-1.145 2.776 3.938 3.938 0 0 0 3.916 3.915c1.047 0 2.003-.421 2.713-1.098l-1.122-1.122a2.31 2.31 0 0 1-1.591.575 2.277 2.277 0 0 1-2.273-2.272c0-.62.258-1.195.656-1.613a2.276 2.276 0 0 1 1.617-.657c.828 0 1.425.31 1.77.73.269.333.45.722.45 1.235v.11h-2.22v1.643h3.862c.06-.27.06-.54.06-.81 0-1.074-.3-2.392-1.234-3.296-.93-.9-2.122-1.266-3.188-1.266z"/>
+                </svg>
+                <span>GCP Projects</span>
+                {gcpAccounts.length > 0 && (
+                  <span className="ml-1 px-2 py-0.5 bg-[#4285F4]/10 text-[#4285F4] rounded-full text-xs font-bold">
+                    {gcpAccounts.length}
+                  </span>
+                )}
+                {activeTab === 'gcp' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4285F4]"></div>
+                )}
+              </button>
             </div>
 
             {/* Tab Content Container */}
@@ -227,7 +268,7 @@ function Settings() {
                         <div key={account._id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
                           <div className="flex items-center gap-3">
                             <div className="size-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center text-white">
-                              <span className="material-symbols-outlined !text-xl">cloud</span>
+                              <Cloud size={20} />
                             </div>
                             <div>
                               <p className="font-bold text-slate-900 dark:text-white">{account.accountName}</p>
@@ -241,7 +282,7 @@ function Settings() {
                             className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                             title="Remove account"
                           >
-                            <span className="material-symbols-outlined !text-xl">delete</span>
+                            <Trash2 size={20} />
                           </button>
                         </div>
                       ))}
@@ -300,16 +341,17 @@ function Settings() {
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                           Region
                         </label>
-                        <select
+                        <input
+                          type="text"
                           value={awsForm.region}
                           onChange={(e) => setAwsForm({...awsForm, region: e.target.value})}
                           className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="us-east-1">US East (N. Virginia)</option>
-                          <option value="us-west-2">US West (Oregon)</option>
-                          <option value="eu-west-1">Europe (Ireland)</option>
-                          <option value="ap-south-1">Asia Pacific (Mumbai)</option>
-                        </select>
+                          placeholder="us-east-1, us-west-2, eu-west-1, ap-south-1, etc."
+                          required
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                          Enter your preferred AWS region (e.g., us-east-1, us-west-2, eu-west-1)
+                        </p>
                       </div>
                       
                       <button
@@ -317,7 +359,7 @@ function Settings() {
                         className="w-full bg-primary hover:bg-blue-800 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20"
                       >
                         <span className="flex items-center justify-center gap-2">
-                          <span className="material-symbols-outlined">add_circle</span>
+                          <PlusCircle size={20} />
                           Connect AWS Account
                         </span>
                       </button>
@@ -339,7 +381,7 @@ function Settings() {
                         <div key={account._id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
                           <div className="flex items-center gap-3">
                             <div className="size-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white">
-                              <span className="material-symbols-outlined !text-xl">cloud</span>
+                                <Cloud size={20} />
                             </div>
                             <div>
                               <p className="font-bold text-slate-900 dark:text-white">{account.subscriptionName}</p>
@@ -353,7 +395,7 @@ function Settings() {
                             className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                             title="Remove subscription"
                           >
-                            <span className="material-symbols-outlined !text-xl">delete</span>
+                            <Trash2 size={20} />
                           </button>
                         </div>
                       ))}
@@ -441,7 +483,7 @@ function Settings() {
                         className="w-full bg-[#0078D4] hover:bg-[#005a9e] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/20"
                       >
                         <span className="flex items-center justify-center gap-2">
-                          <span className="material-symbols-outlined">add_circle</span>
+                          <PlusCircle size={20} />
                           Connect Azure Subscription
                         </span>
                       </button>
@@ -450,10 +492,136 @@ function Settings() {
                 ) : (
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
                     <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-[#0078D4] !text-2xl">info</span>
+                      <Info className="text-[#0078D4]" size={24} />
                       <div>
                         <h3 className="font-bold text-slate-900 dark:text-white mb-1">Azure Subscription Connected</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">You can only connect one Azure subscription. To add a different subscription, please remove the existing one first.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* GCP Tab Content */}
+            {activeTab === 'gcp' && (
+              <div className="space-y-6">
+                {/* Connected GCP Projects */}
+                {gcpAccounts.length > 0 && (
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Connected GCP Projects</h3>
+                    <div className="space-y-3">
+                      {gcpAccounts.map((account) => (
+                        <div key={account._id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white">
+                              <Cloud size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 dark:text-white">{account.projectName}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Project ID: {account.projectId} • Region: {account.region}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteGCPAccount(account.projectId)}
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Remove project"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add GCP Project Form */}
+                {gcpAccounts.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Add GCP Project</h3>
+                    <form onSubmit={handleAddGCPAccount} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                          Project Name
+                        </label>
+                        <input
+                          type="text"
+                          value={gcpForm.projectName}
+                          onChange={(e) => setGcpForm({...gcpForm, projectName: e.target.value})}
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4285F4]"
+                          placeholder="Production GCP"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                          Project ID
+                        </label>
+                        <input
+                          type="text"
+                          value={gcpForm.projectId}
+                          onChange={(e) => setGcpForm({...gcpForm, projectId: e.target.value})}
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4285F4] font-mono text-sm"
+                          placeholder="my-project-id"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                          Service Account JSON
+                        </label>
+                        <textarea
+                          value={gcpForm.serviceAccountJson}
+                          onChange={(e) => setGcpForm({...gcpForm, serviceAccountJson: e.target.value})}
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4285F4] font-mono text-xs"
+                          placeholder='{"type": "service_account", "project_id": "...", ...}'
+                          rows="6"
+                          required
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                          Paste the contents of your service account JSON key file
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                          Region
+                        </label>
+                        <input
+                          type="text"
+                          value={gcpForm.region}
+                          onChange={(e) => setGcpForm({...gcpForm, region: e.target.value})}
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4285F4]"
+                          placeholder="us-central1, europe-west1, asia-east1, etc."
+                          required
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                          Enter your preferred GCP region (e.g., us-central1, us-east1, europe-west1)
+                        </p>
+                      </div>
+                      
+                      <button
+                        type="submit"
+                        className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/20"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <PlusCircle size={20} />
+                          Connect GCP Project
+                        </span>
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
+                    <div className="flex items-start gap-3">
+                      <Info className="text-[#4285F4]" size={24} />
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white mb-1">GCP Project Connected</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">You can only connect one GCP project. To add a different project, please remove the existing one first.</p>
                       </div>
                     </div>
                   </div>

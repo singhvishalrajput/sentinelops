@@ -9,15 +9,25 @@ logger = logging.getLogger(__name__)
 class GeminiEnhancer:
     def __init__(self, api_key=None):
         """Initialize Gemini AI enhancer"""
+        # Read from .env file
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
+        enable_ai_env = os.getenv('ENABLE_AI_ENHANCEMENT', 'true')
+        logger.info(f"ENABLE_AI_ENHANCEMENT env value: '{enable_ai_env}'")
+        self.enabled = enable_ai_env.lower() == 'true'
+        logger.info(f"AI Enhancement enabled: {self.enabled}")
+        logger.info(f"Using API key: {self.api_key[:20]}..." if self.api_key else "No API key found")
         self.request_count = 0
         self.last_request_time = 0
         self.requests_per_minute = 4  # Stay under 5 request limit with buffer
         
-        if self.api_key:
+        if not self.enabled:
+            self.model = None
+            logger.info("AI enhancement is DISABLED via ENABLE_AI_ENHANCEMENT setting")
+        elif self.api_key:
             genai.configure(api_key=self.api_key)
             # Using latest free Gemini model (gemini-flash-latest -> gemini-3-flash-preview)
             self.model = genai.GenerativeModel('gemini-2.5-flash')
+            logger.info("AI enhancement is ENABLED with Gemini model")
         else:
             self.model = None
             logger.warning("Gemini API key not found. AI enhancement will be disabled.")
@@ -184,8 +194,8 @@ Format your response as JSON with keys: enhanced_description, business_impact, d
         priority_findings = [f for f in findings if f['severity'] in ['CRITICAL', 'HIGH']]
         
         if priority_findings:
-            # Process in batches of 3 to stay within rate limits
-            batch_size = 3
+            # Process in batches of 7 to reduce API calls and stay within quota
+            batch_size = 7
             enhanced_count = 0
             
             for i in range(0, len(priority_findings), batch_size):

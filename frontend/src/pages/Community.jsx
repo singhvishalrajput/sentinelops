@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import axios from 'axios';
+import { MessageCircle, Loader, Send } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -13,12 +14,6 @@ function Community() {
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const editorRef = useRef(null);
-
-  // Format button handler
-  const formatText = (command, value = null) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
 
   // Get current user info
   useEffect(() => {
@@ -135,10 +130,9 @@ function Community() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-slate-900 dark:text-white text-sm">Sentinel AI Assistant Available</h3>
-                    <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-bold rounded-full">POWERED BY MISTRAL</span>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Need help with cloud security questions? Mention <code className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded font-mono text-[11px] font-bold">@sentinel</code> in your message to get instant AI-powered assistance on AWS, Azure, cloud infrastructure, and security best practices!
+                    Need help with cloud security questions? Mention <code className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded font-mono text-[11px] font-bold">@sentinel</code> in your message.
                   </p>
                 </div>
               </div>
@@ -149,7 +143,7 @@ function Community() {
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="size-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                    <span className="material-symbols-outlined !text-4xl text-slate-400 dark:text-slate-500">chat_bubble_outline</span>
+                    <MessageCircle className="text-slate-400 dark:text-slate-500" size={40} />
                   </div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No messages yet</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">Be the first to start a conversation! Ask questions or share your security insights.</p>
@@ -232,87 +226,14 @@ function Community() {
 
             {/* Fixed Input Section at Bottom */}
             <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-8 py-4">
-              <div className="space-y-3">
-                {/* Rich Text Editor Toolbar */}
-                <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <button
-                    type="button"
-                    onClick={() => formatText('bold')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Bold"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">format_bold</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => formatText('italic')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Italic"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">format_italic</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => formatText('underline')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Underline"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">format_underlined</span>
-                  </button>
-                  <div className="w-px h-6 bg-slate-300 dark:bg-slate-600"></div>
-                  <button
-                    type="button"
-                    onClick={() => formatText('insertUnorderedList')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Bullet List"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">format_list_bulleted</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => formatText('insertOrderedList')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Numbered List"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">format_list_numbered</span>
-                  </button>
-                  <div className="w-px h-6 bg-slate-300 dark:bg-slate-600"></div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const url = prompt('Enter URL:');
-                      if (url) formatText('createLink', url);
-                    }}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Insert Link"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">link</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => formatText('formatBlock', 'blockquote')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Quote"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">format_quote</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => formatText('formatBlock', 'pre')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
-                    title="Code Block"
-                  >
-                    <span className="material-symbols-outlined !text-lg text-slate-600 dark:text-slate-400">code</span>
-                  </button>
-                </div>
-
-                {/* Editor and Send Button */}
+              <div>
+                {/* Simple Input and Send Button */}
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <div
                       ref={editorRef}
                       contentEditable
-                      className="min-h-[60px] max-h-[120px] overflow-y-auto p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary custom-scrollbar"
+                      className="min-h-[48px] max-h-[120px] overflow-y-auto px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary custom-scrollbar"
                       onInput={(e) => setMessageContent(e.currentTarget.innerHTML)}
                       placeholder="Type your message..."
                       style={{
@@ -328,9 +249,9 @@ function Community() {
                     title="Send Message"
                   >
                     {isLoading ? (
-                      <span className="material-symbols-outlined animate-spin">refresh</span>
+                      <Loader className="animate-spin" size={20} />
                     ) : (
-                      <span className="material-symbols-outlined">send</span>
+                      <Send size={20} />
                     )}
                   </button>
                 </div>

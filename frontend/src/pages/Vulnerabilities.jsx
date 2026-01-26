@@ -2,6 +2,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { RefreshCw, CheckCircle, Sparkles } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -10,7 +11,7 @@ function Vulnerabilities() {
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
-  const [selectedProvider, setSelectedProvider] = useState('aws'); // 'aws' or 'azure'
+  const [selectedProvider, setSelectedProvider] = useState('aws'); // 'aws', 'azure', or 'gcp'
 
   useEffect(() => {
     const fetchScanHistory = async () => {
@@ -118,6 +119,19 @@ function Vulnerabilities() {
                 </svg>
                 Azure
               </button>
+              <button
+                onClick={() => setSelectedProvider('gcp')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+                  selectedProvider === 'gcp'
+                    ? 'bg-[#4285F4] text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.19 2.38a9.344 9.344 0 0 1 9.431 9.431 9.31 9.31 0 0 1-2.828 6.746 9.31 9.31 0 0 1-6.603 2.685h-.03a9.343 9.343 0 0 1-6.649-2.73 9.31 9.31 0 0 1-2.744-6.702 9.345 9.345 0 0 1 9.423-9.43zm-.238 2.757a6.585 6.585 0 0 0-6.588 6.588c0 1.773.701 3.385 1.84 4.552l1.208-1.208a4.877 4.877 0 0 1-1.404-3.344 4.882 4.882 0 0 1 4.883-4.883c1.296 0 2.46.511 3.344 1.346l1.209-1.209a6.584 6.584 0 0 0-4.492-1.842zm.06 2.61a3.894 3.894 0 0 0-2.771 1.15 3.921 3.921 0 0 0-1.145 2.776 3.938 3.938 0 0 0 3.916 3.915c1.047 0 2.003-.421 2.713-1.098l-1.122-1.122a2.31 2.31 0 0 1-1.591.575 2.277 2.277 0 0 1-2.273-2.272c0-.62.258-1.195.656-1.613a2.276 2.276 0 0 1 1.617-.657c.828 0 1.425.31 1.77.73.269.333.45.722.45 1.235v.11h-2.22v1.643h3.862c.06-.27.06-.54.06-.81 0-1.074-.3-2.392-1.234-3.296-.93-.9-2.122-1.266-3.188-1.266z"/>
+                </svg>
+                GCP
+              </button>
             </div>
           </div>
 
@@ -148,14 +162,14 @@ function Vulnerabilities() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <span className="material-symbols-outlined !text-4xl text-slate-400 animate-spin mb-4">sync</span>
+                <RefreshCw className="text-slate-400 animate-spin mb-4 mx-auto" size={40} />
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">Loading vulnerabilities...</p>
               </div>
             </div>
           ) : filteredVulnerabilities.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <span className="material-symbols-outlined !text-4xl text-slate-400 mb-4">check_circle</span>
+                <CheckCircle className="text-slate-400 mb-4 mx-auto" size={40} />
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">No vulnerabilities found</p>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Run a security scan to identify potential vulnerabilities</p>
               </div>
@@ -224,7 +238,7 @@ function Vulnerabilities() {
                           {/* AI Enhanced Badge */}
                           {vuln.ai_enhanced && (
                             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                              <span className="material-symbols-outlined !text-sm">auto_awesome</span>
+                              <Sparkles size={14} />
                               <span className="font-semibold">Enhanced with AI</span>
                             </div>
                           )}

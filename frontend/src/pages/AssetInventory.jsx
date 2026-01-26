@@ -2,6 +2,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { RefreshCw, CloudOff, AlertTriangle } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -73,7 +74,7 @@ function AssetInventory() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <span className="material-symbols-outlined !text-4xl text-slate-400 animate-spin mb-4">sync</span>
+                <RefreshCw className="text-slate-400 animate-spin mb-4 mx-auto" size={40} />
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">Loading assets...</p>
               </div>
             </div>
@@ -105,7 +106,7 @@ function AssetInventory() {
                 </div>
                 {assets.length === 0 ? (
                   <div className="text-center py-8 text-slate-400 dark:text-slate-500">
-                    <span className="material-symbols-outlined !text-4xl mb-2">cloud_off</span>
+                    <CloudOff size={40} className="mb-2 mx-auto" />
                     <p className="text-sm font-semibold">No asset data available</p>
                     <p className="text-xs mt-1">Run a security scan to analyze your AWS resources</p>
                   </div>
@@ -205,11 +206,11 @@ function AssetInventory() {
                           finding.severity === 'HIGH' ? 'bg-amber-100 dark:bg-amber-900/30' :
                           'bg-blue-100 dark:bg-blue-900/30'
                         }`}>
-                          <span className={`material-symbols-outlined ${
+                          <AlertTriangle className={`${
                             finding.severity === 'CRITICAL' ? 'text-red-600' : 
                             finding.severity === 'HIGH' ? 'text-amber-600' :
                             'text-blue-600'
-                          }`}>warning_amber</span>
+                          }`} size={24} />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-bold text-slate-900 dark:text-white">{finding.issue || finding.title}</p>

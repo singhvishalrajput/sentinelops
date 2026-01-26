@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Shield } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -61,7 +62,7 @@ function Login() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
             <div className="size-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
-              <span className="material-symbols-outlined !text-2xl">shield</span>
+              <Shield size={24} />
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">SentinelOps</h1>
           </Link>

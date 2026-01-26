@@ -1,5 +1,6 @@
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import { ShieldCheck, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
 
 function Compliance() {
   return (
@@ -18,7 +19,7 @@ function Compliance() {
             <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
               <div className="flex items-center gap-4 mb-4">
                 <div className="size-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary">verified_user</span>
+                  <ShieldCheck className="text-primary" size={24} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Compliance Score</p>
@@ -33,7 +34,7 @@ function Compliance() {
             <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
               <div className="flex items-center gap-4 mb-4">
                 <div className="size-12 bg-amber-50 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
-                  <span className="material-symbols-outlined text-amber-500">warning</span>
+                  <AlertTriangle className="text-amber-500" size={24} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Failed Checks</p>
@@ -46,7 +47,7 @@ function Compliance() {
             <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
               <div className="flex items-center gap-4 mb-4">
                 <div className="size-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-                  <span className="material-symbols-outlined text-emerald-500">check_circle</span>
+                  <CheckCircle className="text-emerald-500" size={24} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Passed Checks</p>
@@ -119,7 +120,7 @@ function Compliance() {
               <h3 className="text-lg font-bold text-slate-900 mb-6">Compliance Trends</h3>
               <div className="h-48 flex items-center justify-center text-slate-400">
                 <div className="text-center">
-                  <span className="material-symbols-outlined text-6xl mb-2">trending_up</span>
+                  <TrendingUp size={60} className="mb-2 mx-auto" />
                   <p className="text-sm">Compliance score improving</p>
                 </div>
               </div>

@@ -59,129 +59,161 @@ router.delete('/history/clear', protect, async (req, res) => {
 });
 
 // @route   POST /api/scan/start
-// @desc    Start a new scan (this will communicate with Python backend)
+// @desc    Start a new scan (AWS or Azure)
 // @access  Private
 router.post('/start', protect, async (req, res) => {
   try {
-    const { scanType, awsAccountId } = req.body;
+    const { scanType, awsAccountId, azureAccountId, cloudProvider = 'aws' } = req.body;
     const axios = require('axios');
     const User = require('../models/User');
 
-    // Find user's AWS account
-    console.log('🔍 Looking for AWS account ID:', awsAccountId);
     const user = await User.findById(req.user._id);
     console.log('👤 User found:', user.email);
-    console.log('📋 User has AWS accounts:', user.awsAccounts.length);
-    
-    const awsAccount = user.awsAccounts.find(acc => acc._id.toString() === awsAccountId);
 
-    if (!awsAccount) {
-      console.log('❌ AWS account not found in user accounts');
-      console.log('Available account IDs:', user.awsAccounts.map(a => a._id.toString()));
-      return res.status(404).json({
-        success: false,
-        message: 'AWS account not found'
+    let scanData, pythonScanId, accountInfo;
+
+    // Handle AWS scan
+    if (cloudProvider === 'aws' || awsAccountId) {
+      console.log('☁️ Starting AWS scan...');
+      console.log('🔍 Looking for AWS account ID:', awsAccountId);
+      console.log('📋 User has AWS accounts:', user.awsAccounts.length);
+      
+      const awsAccount = user.awsAccounts.find(acc => acc._id.toString() === awsAccountId);
+
+      if (!awsAccount) {
+        console.log('❌ AWS account not found');
+        return res.status(404).json({
+          success: false,
+          message: 'AWS account not found'
+        });
+      }
+      
+      console.log('✅ AWS account found:', awsAccount.accountName);
+
+      // Create scan history record
+      const scan = await ScanHistory.create({
+        userId: req.user._id,
+        scanType: scanType || 'full',
+        awsAccountId,
+        cloudProvider: 'AWS',
+        status: 'running',
+        startedAt: Date.now()
       });
+
+      // Call Python backend for AWS scan
+      try {
+        console.log('🐍 Calling Python backend for AWS scan');
+        const pythonResponse = await axios.post('http://localhost:5001/api/scan', {
+          aws_access_key_id: awsAccount.accessKeyId,
+          aws_secret_access_key: awsAccount.secretAccessKey,
+          region: awsAccount.region || 'us-east-1'
+        }, { timeout: 120000 });
+        
+        console.log('✅ AWS scan completed successfully');
+        scanData = pythonResponse.data.data;
+        pythonScanId = pythonResponse.data.scan_id;
+        accountInfo = { accountName: awsAccount.accountName };
+
+        await processScanResults(scan, scanData, pythonScanId, user, scanType);
+        
+        return res.status(201).json({
+          success: true,
+          message: 'AWS scan completed successfully',
+          scanId: scan._id,
+          scan_id: pythonScanId,
+          pythonScanId: pythonScanId,
+          results: scan.results
+        });
+
+      } catch (pythonError) {
+        console.error('Python backend error:', pythonError.message);
+        scan.status = 'failed';
+        scan.completedAt = Date.now();
+        await scan.save();
+
+        return res.status(500).json({
+          success: false,
+          message: 'AWS scan failed - Python backend error',
+          error: pythonError.response?.data?.error || pythonError.message
+        });
+      }
     }
     
-    console.log('✅ AWS account found:', awsAccount.accountName);
-    console.log('🔑 Has credentials:', {
-      hasAccessKey: !!awsAccount.accessKeyId,
-      hasSecretKey: !!awsAccount.secretAccessKey,
-      region: awsAccount.region
-    });
+    // Handle Azure scan
+    else if (cloudProvider === 'azure' || azureAccountId) {
+      console.log('☁️ Starting Azure scan...');
+      console.log('🔍 Looking for Azure account ID:', azureAccountId);
+      console.log('📋 User has Azure accounts:', user.azureAccounts.length);
+      
+      const azureAccount = user.azureAccounts.find(acc => acc._id.toString() === azureAccountId);
 
-    // Create scan history record
-    const scan = await ScanHistory.create({
-      userId: req.user._id,
-      scanType: scanType || 'full',
-      awsAccountId,
-      status: 'running',
-      startedAt: Date.now()
-    });
+      if (!azureAccount) {
+        console.log('❌ Azure account not found');
+        return res.status(404).json({
+          success: false,
+          message: 'Azure account not found'
+        });
+      }
+      
+      console.log('✅ Azure account found:', azureAccount.subscriptionName);
 
-    // Call Python backend to perform scan
-    try {
-      console.log('🐍 Calling Python backend at http://localhost:5001/api/scan');
-      console.log('📤 Sending credentials to Python (masked):', {
-        accessKeyId: awsAccount.accessKeyId?.substring(0, 8) + '...',
-        hasSecretKey: !!awsAccount.secretAccessKey,
-        region: awsAccount.region || 'us-east-1',
-        scanType: scanType || 'full'
-      });
-      
-      const pythonResponse = await axios.post('http://localhost:5001/api/scan', {
-        aws_access_key_id: awsAccount.accessKeyId,
-        aws_secret_access_key: awsAccount.secretAccessKey,
-        region: awsAccount.region || 'us-east-1'
-      }, {
-        timeout: 120000 // 2 minutes timeout
-      });
-      
-      console.log('✅ Python backend responded successfully');
-      console.log('📊 Scan results:', pythonResponse.data.data);
-
-      // Update scan with results
-      const scanData = pythonResponse.data.data;
-      const pythonScanId = pythonResponse.data.scan_id; // Get Python backend's scan ID
-      
-      scan.status = 'completed';
-      scan.completedAt = Date.now();
-      scan.duration = Math.round((scan.completedAt - scan.startedAt) / 1000);
-      scan.results = {
-        riskScore: Math.min(100, (scanData.severity_breakdown.critical * 15) + 
-                                  (scanData.severity_breakdown.high * 5) + 
-                                  (scanData.severity_breakdown.medium * 2)),
-        criticalCount: scanData.severity_breakdown.critical,
-        highCount: scanData.severity_breakdown.high,
-        mediumCount: scanData.severity_breakdown.medium,
-        lowCount: scanData.severity_breakdown.low,
-        totalAssets: scanData.findings.length,
-        complianceScore: Math.max(0, 100 - (scanData.severity_breakdown.critical * 5) - 
-                                           (scanData.severity_breakdown.high * 2)),
-        findings: scanData.findings, // Includes all fields: remediation, detailed_remediation, business_impact, prevention_tips, ai_enhanced
-        pythonScanId: pythonScanId, // Store Python scan ID for PDF download
-        executive_summary: scanData.executive_summary, // AI-generated executive summary
-        ai_enhanced_count: scanData.ai_enhanced_count || 0, // Number of AI-enhanced findings
-        service_breakdown: scanData.service_breakdown, // Issues per service
-        severity_breakdown: scanData.severity_breakdown // Full severity breakdown
-      };
-      
-      console.log('💾 Saving scan with', scanData.findings.length, 'findings');
-      console.log('🤖 AI enhanced:', scanData.ai_enhanced_count || 0, 'findings');
-      
-      await scan.save();
-
-      // Send Slack notification (non-blocking)
-      sendSlackNotification({
-        results: scan.results,
-        duration: scan.duration,
-        scanType: scan.scanType
-      }, user).catch(err => {
-        console.error('Slack notification failed (non-critical):', err.message);
+      // Create scan history record
+      const scan = await ScanHistory.create({
+        userId: req.user._id,
+        scanType: scanType || 'full',
+        azureAccountId,
+        cloudProvider: 'Azure',
+        status: 'running',
+        startedAt: Date.now()
       });
 
-      res.status(201).json({
-        success: true,
-        message: 'Scan completed successfully',
-        scanId: scan._id,
-        scan_id: pythonScanId, // Add this for frontend compatibility
-        pythonScanId: pythonScanId, // Python backend scan ID for PDF download
-        results: scan.results
-      });
+      // Call Python backend for Azure scan
+      try {
+        console.log('🐍 Calling Python backend for Azure scan');
+        const pythonResponse = await axios.post('http://localhost:5001/api/azure/scan', {
+          subscription_id: azureAccount.subscriptionId,
+          client_id: azureAccount.clientId,
+          tenant_id: azureAccount.tenantId,
+          client_secret: azureAccount.clientSecret
+        }, { timeout: 120000 });
+        
+        console.log('✅ Azure scan completed successfully');
+        scanData = pythonResponse.data.data;
+        pythonScanId = pythonResponse.data.scan_id;
+        accountInfo = { subscriptionName: azureAccount.subscriptionName };
 
-    } catch (pythonError) {
-      console.error('Python backend error:', pythonError.message);
-      scan.status = 'failed';
-      scan.completedAt = Date.now();
-      await scan.save();
+        await processScanResults(scan, scanData, pythonScanId, user, scanType);
+        
+        return res.status(201).json({
+          success: true,
+          message: 'Azure scan completed successfully',
+          scanId: scan._id,
+          scan_id: pythonScanId,
+          pythonScanId: pythonScanId,
+          results: scan.results
+        });
 
-      return res.status(500).json({
+      } catch (pythonError) {
+        console.error('Python backend error:', pythonError.message);
+        scan.status = 'failed';
+        scan.completedAt = Date.now();
+        await scan.save();
+
+        return res.status(500).json({
+          success: false,
+          message: 'Azure scan failed - Python backend error',
+          error: pythonError.response?.data?.error || pythonError.message
+        });
+      }
+    }
+    
+    else {
+      return res.status(400).json({
         success: false,
-        message: 'Scan failed - Python backend error',
-        error: pythonError.response?.data?.error || pythonError.message
+        message: 'Please specify either AWS or Azure account'
       });
     }
+
   } catch (error) {
     console.error('Start scan error:', error);
     res.status(500).json({
@@ -191,6 +223,93 @@ router.post('/start', protect, async (req, res) => {
     });
   }
 });
+
+// Helper function to process scan results
+async function processScanResults(scan, scanData, pythonScanId, user, scanType) {
+  scan.status = 'completed';
+  scan.completedAt = Date.now();
+  scan.duration = Math.round((scan.completedAt - scan.startedAt) / 1000);
+  
+  // Convert array fields to strings if they exist
+  const processedFindings = scanData.findings?.map(finding => {
+    const processed = { ...finding };
+    
+    // Convert detailed_remediation from array to string
+    if (Array.isArray(processed.detailed_remediation)) {
+      processed.detailed_remediation = processed.detailed_remediation
+        .map((step, index) => `${index + 1}. ${step}`)
+        .join('\n');
+    }
+    
+    // Convert business_impact from array to string
+    if (Array.isArray(processed.business_impact)) {
+      processed.business_impact = processed.business_impact.join('\n');
+    }
+    
+    // Convert prevention_tips from array to string
+    if (Array.isArray(processed.prevention_tips)) {
+      processed.prevention_tips = processed.prevention_tips
+        .map((tip, index) => `${index + 1}. ${tip}`)
+        .join('\n');
+    }
+    
+    return processed;
+  }) || [];
+  
+  // Extract counts from severity_breakdown (Python backend returns this structure)
+  const criticalCount = scanData.criticalCount || scanData.severity_breakdown?.critical || 0;
+  const highCount = scanData.highCount || scanData.severity_breakdown?.high || 0;
+  const mediumCount = scanData.mediumCount || scanData.severity_breakdown?.medium || 0;
+  const lowCount = scanData.lowCount || scanData.severity_breakdown?.low || 0;
+  
+  // Calculate risk score with safe defaults
+  const calculatedRiskScore = Math.min(100, (criticalCount * 15) + (highCount * 5) + (mediumCount * 2));
+  const riskScore = scanData.riskScore !== undefined && !isNaN(scanData.riskScore) 
+    ? scanData.riskScore 
+    : calculatedRiskScore;
+  
+  // Calculate compliance score with safe defaults
+  const calculatedComplianceScore = Math.max(0, 100 - (criticalCount * 5) - (highCount * 2));
+  const complianceScore = scanData.complianceScore !== undefined && !isNaN(scanData.complianceScore)
+    ? scanData.complianceScore
+    : calculatedComplianceScore;
+  
+  scan.results = {
+    riskScore: riskScore,
+    criticalCount: criticalCount,
+    highCount: highCount,
+    mediumCount: mediumCount,
+    lowCount: lowCount,
+    totalAssets: scanData.totalAssets || scanData.findings?.length || 0,
+    complianceScore: complianceScore,
+    findings: processedFindings,
+    pythonScanId: pythonScanId,
+    executive_summary: scanData.executive_summary,
+    ai_enhanced_count: scanData.ai_enhanced_count || 0,
+    service_breakdown: scanData.service_breakdown,
+    severity_breakdown: scanData.severity_breakdown || {
+      critical: criticalCount,
+      high: highCount,
+      medium: mediumCount,
+      low: lowCount
+    },
+    cloudProvider: scanData.cloudProvider
+  };
+  
+  console.log('💾 Saving scan with', scanData.findings?.length || 0, 'findings');
+  console.log('🤖 AI enhanced:', scanData.ai_enhanced_count || 0, 'findings');
+  
+  await scan.save();
+
+  // Send Slack notification (non-blocking)
+  sendSlackNotification({
+    results: scan.results,
+    duration: scan.duration,
+    scanType: scanType
+  }, user).catch(err => {
+    console.error('Slack notification failed (non-critical):', err.message);
+  });
+}
 
 // @route   GET /api/scan/:id
 // @desc    Get scan details

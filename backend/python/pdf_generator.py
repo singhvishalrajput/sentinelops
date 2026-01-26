@@ -114,8 +114,9 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 0.5*inch))
             
-            # Report Title
-            story.append(Paragraph("AWS Security Scan Report", self.styles['CustomTitle']))
+            # Report Title - Dynamic based on cloud provider
+            cloud_provider = scan_results.get('cloudProvider', 'AWS')
+            story.append(Paragraph(f"{cloud_provider} Security Scan Report", self.styles['CustomTitle']))
             story.append(Spacer(1, 0.3*inch))
             story.append(Paragraph(
                 f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}",

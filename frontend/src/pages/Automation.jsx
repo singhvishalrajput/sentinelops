@@ -1,5 +1,6 @@
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import { Plus, MoreVertical } from 'lucide-react';
 
 function Automation() {
   return (
@@ -41,7 +42,7 @@ function Automation() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Security Playbooks</h3>
               <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-800 transition-all">
-                <span className="material-symbols-outlined !text-sm">add</span>
+                <Plus size={16} />
                 Create Playbook
               </button>
             </div>
@@ -100,7 +101,7 @@ function Automation() {
                     <p className="text-xs text-slate-500 dark:text-slate-400">Last: {playbook.lastRun}</p>
                   </div>
                   <button className="text-slate-400 hover:text-primary">
-                    <span className="material-symbols-outlined">more_vert</span>
+                    <MoreVertical size={20} />
                   </button>
                 </div>
               ))}

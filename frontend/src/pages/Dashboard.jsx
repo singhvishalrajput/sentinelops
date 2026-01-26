@@ -5,6 +5,7 @@ import emailjs from '@emailjs/browser';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { Radar, AlertOctagon, AlertTriangle, ShieldCheck, Package, TrendingUp, CloudOff, Grid } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -14,18 +15,19 @@ function Dashboard() {
   const [showResults, setShowResults] = useState(false);
   const [awsAccounts, setAwsAccounts] = useState([]);
   const [azureAccounts, setAzureAccounts] = useState([]);
-  const [selectedProvider, setSelectedProvider] = useState('aws'); // 'aws' or 'azure'
+  const [gcpAccounts, setGcpAccounts] = useState([]);
+  const [selectedProvider, setSelectedProvider] = useState('aws'); // 'aws', 'azure', or 'gcp'
   const [scanResults, setScanResults] = useState(null);
   const [scanId, setScanId] = useState(null); // Track scan ID for PDF download
   const [scanHistory, setScanHistory] = useState([]); // Track scan history for trends
 
   const scanSteps = [
     { message: 'Initializing scan engine...', duration: 1000 },
-    { message: `Connecting to ${selectedProvider === 'aws' ? 'AWS' : 'Azure'} infrastructure...`, duration: 1500 },
+    { message: `Connecting to ${selectedProvider === 'aws' ? 'AWS' : selectedProvider === 'azure' ? 'Azure' : 'GCP'} infrastructure...`, duration: 1500 },
     { message: 'Performing deep security scan...', duration: 2000 },
     { message: 'Identifying vulnerabilities...', duration: 1800 },
-    { message: selectedProvider === 'aws' ? 'Analyzing IAM policies...' : 'Analyzing role assignments...', duration: 1500 },
-    { message: selectedProvider === 'aws' ? 'Checking S3 bucket permissions...' : 'Checking storage account permissions...', duration: 1200 },
+    { message: selectedProvider === 'aws' ? 'Analyzing IAM policies...' : selectedProvider === 'azure' ? 'Analyzing role assignments...' : 'Analyzing IAM policies and service accounts...', duration: 1500 },
+    { message: selectedProvider === 'aws' ? 'Checking S3 bucket permissions...' : selectedProvider === 'azure' ? 'Checking storage account permissions...' : 'Checking Cloud Storage bucket permissions...', duration: 1200 },
     { message: 'Evaluating network configurations...', duration: 1400 },
     { message: 'Generating risk assessment report...', duration: 1600 },
     { message: 'Finalizing results...', duration: 1000 }
@@ -107,6 +109,22 @@ function Dashboard() {
       }
     };
     fetchAzureAccounts();
+  }, []);
+
+  // Fetch GCP accounts on component mount
+  useEffect(() => {
+    const fetchGCPAccounts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/gcp/accounts`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setGcpAccounts(response.data.accounts || []);
+      } catch (error) {
+        console.error('Error fetching GCP accounts:', error);
+      }
+    };
+    fetchGCPAccounts();
   }, []);
 
   const sendEmailNotification = async (results) => {
@@ -216,7 +234,7 @@ All identified issues have been prioritized by severity. Please review the full 
   };
 
   const handleScan = async () => {
-    const accounts = selectedProvider === 'aws' ? awsAccounts : azureAccounts;
+    const accounts = selectedProvider === 'aws' ? awsAccounts : selectedProvider === 'azure' ? azureAccounts : gcpAccounts;
     
     if (accounts.length === 0) {
       toast.error(`${selectedProvider.toUpperCase()} account not connected. Please connect in Settings.`, {
@@ -232,7 +250,7 @@ All identified issues have been prioritized by severity. Please review the full 
 
     console.log(`🚀 Starting ${selectedProvider.toUpperCase()} scan...`);
     console.log(`📋 ${selectedProvider.toUpperCase()} Accounts available:`, accounts.length);
-    console.log('🎯 Using account:', accounts[0].accountName || accounts[0].subscriptionName);
+    console.log('🎯 Using account:', accounts[0].accountName || accounts[0].subscriptionName || accounts[0].projectName);
 
     setIsScanning(true);
     setShowResults(false);
@@ -243,25 +261,36 @@ All identified issues have been prioritized by severity. Please review the full 
       
       console.log('📤 Sending scan request to backend...');
       
-      // Different endpoints and payloads for AWS vs Azure
-      const scanPromise = selectedProvider === 'aws'
-        ? axios.post(
-            `${API_URL}/scan/start`,
-            {
-              scanType: 'full',
-              awsAccountId: accounts[0].id
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-        : axios.post(
-            `${API_URL}/scan/start`,
-            {
-              scanType: 'full',
-              azureAccountId: accounts[0]._id,
-              cloudProvider: 'azure'
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+      // Different endpoints and payloads for AWS vs Azure vs GCP
+      let scanPromise;
+      if (selectedProvider === 'aws') {
+        scanPromise = axios.post(
+          `${API_URL}/scan/start`,
+          {
+            scanType: 'full',
+            awsAccountId: accounts[0].id
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else if (selectedProvider === 'azure') {
+        scanPromise = axios.post(
+          `${API_URL}/scan/start`,
+          {
+            scanType: 'full',
+            azureAccountId: accounts[0]._id,
+            cloudProvider: 'azure'
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else if (selectedProvider === 'gcp') {
+        scanPromise = axios.post(
+          `${API_URL}/gcp/scan`,
+          {
+            gcpAccountId: accounts[0]._id
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
 
       // Show progress animation while scanning
       const progressPromise = (async () => {
@@ -279,7 +308,9 @@ All identified issues have been prioritized by severity. Please review the full 
         console.log('✅ Scan completed successfully!');
         console.log('📊 Scan response:', scanResponse.data);
         
-        setScanResults(scanResponse.data.results);
+        // GCP returns data in .data, AWS/Azure in .results
+        const results = scanResponse.data.data || scanResponse.data.results;
+        setScanResults(results);
         setScanId(scanResponse.data.scan_id || scanResponse.data.pythonScanId);
         setShowResults(true);
         
@@ -288,7 +319,7 @@ All identified issues have been prioritized by severity. Please review the full 
           autoClose: 3000,
         });
         
-        await sendEmailNotification(scanResponse.data.results);
+        await sendEmailNotification(results);
       }
 
     } catch (error) {
@@ -308,7 +339,7 @@ All identified issues have been prioritized by severity. Please review the full 
       <div className="absolute inset-0 hero-grid opacity-40 dark:hidden pointer-events-none"></div>
       <Sidebar />
       
-      <main className="flex-1 flex flex-col overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-y-auto lg:ml-0">
         <Header 
           title="Security Command Center" 
           subtitle="Global cloud infrastructure real-time monitoring"
@@ -317,32 +348,45 @@ All identified issues have been prioritized by severity. Please review the full 
           hasScanResults={!!scanResults}
           onDownloadReport={downloadReport}
           providerButtons={
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               <button
                 onClick={() => setSelectedProvider('aws')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all active:scale-95 ${
                   selectedProvider === 'aws'
                     ? 'bg-primary text-white shadow-md'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                 }`}
               >
-                <svg className="w-4 h-4" viewBox="0 0 304 182" fill="currentColor">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 304 182" fill="currentColor">
                   <path d="M86.4 66.4c0 3.7.4 6.7 1.1 8.9.8 2.2 1.8 4.6 3.2 7.2.5.8.7 1.6.7 2.3 0 1-.6 2-1.9 3l-6.3 4.2c-.9.6-1.8.9-2.6.9-1 0-2-.5-3-1.4-1.4-1.5-2.6-3.1-3.6-4.7-1-1.7-2-3.6-3.1-5.9-7.8 9.2-17.6 13.8-29.4 13.8-8.4 0-15.1-2.4-20-7.2-4.9-4.8-7.4-11.2-7.4-19.2 0-8.5 3-15.4 9.1-20.6s14.2-7.8 24.5-7.8c3.4 0 6.9.3 10.6.8 3.7.5 7.5 1.3 11.5 2.2v-7.3c0-7.6-1.6-12.9-4.7-16-3.2-3.1-8.6-4.6-16.3-4.6-3.5 0-7.1.4-10.8 1.3-3.7.9-7.3 2-10.8 3.4-1.6.7-2.8 1.1-3.5 1.3-.7.2-1.2.3-1.6.3-1.4 0-2.1-1-2.1-3.1v-4.9c0-1.6.2-2.8.7-3.5.5-.7 1.4-1.4 2.8-2.1 3.5-1.8 7.7-3.3 12.6-4.5 4.9-1.3 10.1-1.9 15.6-1.9 11.9 0 20.6 2.7 26.2 8.1 5.5 5.4 8.3 13.6 8.3 24.6v32.4zm-40.6 15.2c3.3 0 6.7-.6 10.3-1.8 3.6-1.2 6.8-3.4 9.5-6.4 1.6-1.9 2.8-4 3.4-6.4.6-2.4 1-5.3 1-8.7v-4.2c-2.9-.7-6-1.3-9.2-1.7-3.2-.4-6.3-.6-9.4-.6-6.7 0-11.6 1.3-14.9 4-3.3 2.7-4.9 6.5-4.9 11.5 0 4.7 1.2 8.2 3.7 10.6 2.4 2.5 5.9 3.7 10.5 3.7zm80.3 10.8c-1.8 0-3-.3-3.8-.9-.8-.6-1.5-2-2.1-3.9L96.7 10.2c-.6-2-.9-3.3-.9-4 0-1.6.8-2.5 2.4-2.5h9.8c1.9 0 3.2.3 3.9.9.8.6 1.4 2 2 3.9l16.8 66.2 15.6-66.2c.5-2 1.1-3.3 1.9-3.9s2.2-.9 4-.9h8c1.9 0 3.2.3 4 .9.8.6 1.5 2 1.9 3.9l15.8 67 17.3-67c.6-2 1.3-3.3 2-3.9.8-.6 2.1-.9 3.9-.9h9.3c1.6 0 2.5.8 2.5 2.5 0 .5-.1 1-.2 1.6-.1.6-.3 1.4-.7 2.5l-24.1 77.3c-.6 2-1.3 3.3-2.1 3.9-.8.6-2.1.9-3.8.9h-8.6c-1.9 0-3.2-.3-4-.9-.8-.6-1.5-2-1.9-4L156 23l-15.4 64.4c-.5 2-1.1 3.3-1.9 4-.8.6-2.2.9-4 .9h-8.6zm128.5 2.7c-5.2 0-10.4-.6-15.4-1.8-5-1.2-8.9-2.5-11.5-4-1.6-.9-2.7-1.9-3.1-2.8-.4-.9-.6-1.9-.6-2.8v-5.1c0-2.1.8-3.1 2.3-3.1.6 0 1.2.1 1.8.3.6.2 1.5.6 2.5 1 3.4 1.5 7.1 2.7 11 3.5 4 .8 7.9 1.2 11.9 1.2 6.3 0 11.2-1.1 14.6-3.3 3.4-2.2 5.2-5.4 5.2-9.5 0-2.8-.9-5.1-2.7-7-1.8-1.9-5.2-3.6-10.1-5.2L246 52c-7.3-2.3-12.7-5.7-16-10.2-3.3-4.4-5-9.3-5-14.5 0-4.2.9-7.9 2.7-11.1 1.8-3.2 4.2-6 7.2-8.2 3-2.3 6.4-4 10.4-5.2 4-1.2 8.2-1.7 12.6-1.7 2.2 0 4.5.1 6.7.4 2.3.3 4.4.7 6.5 1.1 2 .5 3.9 1 5.7 1.6 1.8.6 3.2 1.2 4.2 1.8 1.4.8 2.4 1.6 3 2.5.6.8.9 1.9.9 3.3v4.7c0 2.1-.8 3.2-2.3 3.2-.8 0-2.1-.4-3.8-1.2-5.7-2.6-12.1-3.9-19.2-3.9-5.7 0-10.2.9-13.3 2.8-3.1 1.9-4.7 4.8-4.7 8.9 0 2.8 1 5.2 3 7.1 2 1.9 5.7 3.8 11 5.5l14.2 4.5c7.2 2.3 12.4 5.5 15.5 9.6 3.1 4.1 4.6 8.8 4.6 14 0 4.3-.9 8.2-2.6 11.6-1.8 3.4-4.2 6.4-7.3 8.8-3.1 2.5-6.8 4.3-11.1 5.6-4.5 1.4-9.2 2.1-14.3 2.1z"/>
                 </svg>
-                AWS
+                <span className="hidden sm:inline">AWS</span>
               </button>
               <button
                 onClick={() => setSelectedProvider('azure')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all active:scale-95 ${
                   selectedProvider === 'azure'
                     ? 'bg-[#0078D4] text-white shadow-md'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                 }`}
               >
-                <svg className="w-4 h-4" viewBox="0 0 96 96" fill="currentColor">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" viewBox="0 0 96 96" fill="currentColor">
                   <path d="M25.8 66.4L47.5 9.7h19.2L42.2 66.4zm18.3 0L66.6 23l17.9 43.4h-23l-7.2 18.7L29.4 81z"/>
                 </svg>
-                Azure
+                <span className="hidden sm:inline">Azure</span>
+              </button>
+              <button
+                onClick={() => setSelectedProvider('gcp')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all active:scale-95 ${
+                  selectedProvider === 'gcp'
+                    ? 'bg-[#4285F4] text-white shadow-md'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.19 2.38a9.344 9.344 0 0 1 9.431 9.431 9.31 9.31 0 0 1-2.828 6.746 9.31 9.31 0 0 1-6.603 2.685h-.03a9.343 9.343 0 0 1-6.649-2.73 9.31 9.31 0 0 1-2.744-6.702 9.345 9.345 0 0 1 9.423-9.43zm-.238 2.757a6.585 6.585 0 0 0-6.588 6.588c0 1.773.701 3.385 1.84 4.552l1.208-1.208a4.877 4.877 0 0 1-1.404-3.344 4.882 4.882 0 0 1 4.883-4.883c1.296 0 2.46.511 3.344 1.346l1.209-1.209a6.584 6.584 0 0 0-4.492-1.842zm.06 2.61a3.894 3.894 0 0 0-2.771 1.15 3.921 3.921 0 0 0-1.145 2.776 3.938 3.938 0 0 0 3.916 3.915c1.047 0 2.003-.421 2.713-1.098l-1.122-1.122a2.31 2.31 0 0 1-1.591.575 2.277 2.277 0 0 1-2.273-2.272c0-.62.258-1.195.656-1.613a2.276 2.276 0 0 1 1.617-.657c.828 0 1.425.31 1.77.73.269.333.45.722.45 1.235v.11h-2.22v1.643h3.862c.06-.27.06-.54.06-.81 0-1.074-.3-2.392-1.234-3.296-.93-.9-2.122-1.266-3.188-1.266z"/>
+                </svg>
+                GCP
               </button>
             </div>
           }
@@ -357,7 +401,7 @@ All identified issues have been prioritized by severity. Please review the full 
                 <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
                   <div className="relative size-12 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-primary/30">
-                    <span className="material-symbols-outlined !text-2xl text-white animate-pulse">radar</span>
+                    <Radar className="text-white animate-pulse" size={32} />
                   </div>
                 </div>
                 
@@ -378,70 +422,70 @@ All identified issues have been prioritized by severity. Please review the full 
           </div>
         )}
         
-        <div className="p-8 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <span className="material-symbols-outlined text-red-500">dangerous</span>
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            <div className="glass-panel p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <AlertOctagon className="text-red-500" size={window.innerWidth < 640 ? 20 : 24} />
                 <span className="text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                   {scanResults ? 'Updated' : 'Waiting'}
                 </span>
               </div>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {scanResults ? String(scanResults.criticalCount).padStart(2, '0') : '--'}
               </p>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Critical Risks</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">Critical Risks</p>
             </div>
-            <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <span className="material-symbols-outlined text-amber-500">warning</span>
+            <div className="glass-panel p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <AlertTriangle className="text-amber-500" size={window.innerWidth < 640 ? 20 : 24} />
                 <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
                   {scanResults ? 'Updated' : 'Waiting'}
                 </span>
               </div>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {scanResults ? scanResults.highCount : '--'}
               </p>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">High Severity</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">High Severity</p>
             </div>
-            <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <span className="material-symbols-outlined text-primary">verified</span>
+            <div className="glass-panel p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <ShieldCheck className="text-primary" size={window.innerWidth < 640 ? 20 : 24} />
                 <span className="text-[10px] font-bold text-primary bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                   {scanResults ? 'Updated' : 'Waiting'}
                 </span>
               </div>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {scanResults ? `${scanResults.complianceScore}%` : '--'}
               </p>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Compliance Score</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">Compliance Score</p>
             </div>
-            <div className="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <span className="material-symbols-outlined text-slate-400 dark:text-slate-500">inventory_2</span>
+            <div className="glass-panel p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <Package className="text-slate-400 dark:text-slate-500" size={window.innerWidth < 640 ? 20 : 24} />
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                   AWS
                 </span>
               </div>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {scanResults ? scanResults.totalAssets : '--'}
               </p>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Total Assets</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">Total Assets</p>
             </div>
           </div>
           
           {/* Download Report Button - Show after scan completes */}
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 glass-panel p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+            <div className="lg:col-span-2 glass-panel p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
                 <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white">Vulnerability Trends</h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">Vulnerability Trends</h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                     {scanHistory.length > 0 ? `Showing last ${scanHistory.length} scans` : 'No scan history available'}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                   <div className="flex items-center gap-1">
                     <div className="size-2 rounded-full bg-red-500"></div>
                     <span className="text-[10px] font-bold text-slate-400">Critical</span>
@@ -599,7 +643,7 @@ All identified issues have been prioritized by severity. Please review the full 
                   })()
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
-                    <span className="material-symbols-outlined !text-5xl mb-3 opacity-30">query_stats</span>
+                    <TrendingUp className="mb-3 opacity-30" size={50} />
                     <p className="text-sm font-semibold">No trend data available</p>
                     <p className="text-xs mt-1">Run multiple scans to see vulnerability trends</p>
                   </div>
@@ -633,7 +677,7 @@ All identified issues have been prioritized by severity. Please review the full 
                   </>
                 ) : (
                   <div className="text-center py-8 text-slate-400 dark:text-slate-500">
-                    <span className="material-symbols-outlined !text-4xl mb-2">inventory_2</span>
+                    <Package className="mb-2" size={40} />
                     <p className="text-sm font-semibold">No asset data</p>
                     <p className="text-xs mt-1">Run a scan to view assets</p>
                   </div>
@@ -679,7 +723,7 @@ All identified issues have been prioritized by severity. Please review the full 
                   })
                 ) : (
                   <div className="text-center py-8 text-slate-400 dark:text-slate-500">
-                    <span className="material-symbols-outlined !text-4xl mb-2">cloud_off</span>
+                    <CloudOff className="mb-2" size={40} />
                     <p className="text-sm font-semibold">No scan results yet</p>
                     <p className="text-xs mt-1">Click "Trigger Full Scan" to analyze your AWS infrastructure</p>
                   </div>
@@ -788,7 +832,7 @@ All identified issues have been prioritized by severity. Please review the full 
                   })()
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
-                    <span className="material-symbols-outlined !text-5xl mb-3 opacity-30">grid_on</span>
+                    <Grid className="mb-3 opacity-30" size={50} />
                     <p className="text-sm font-semibold">No heatmap data</p>
                     <p className="text-xs mt-1">Run a scan to visualize risk distribution</p>
                   </div>

@@ -44,6 +44,27 @@ const UserSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  azureAccounts: [{
+    subscriptionId: String,
+    subscriptionName: String,
+    clientId: String,
+    tenantId: String,
+    clientSecret: String,
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  gcpAccounts: [{
+    projectId: String,
+    projectName: String,
+    serviceAccountJson: String, // Stored as stringified JSON
+    region: String,
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   notificationEmail: {
     type: String,
     default: ''
