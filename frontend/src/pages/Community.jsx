@@ -11,6 +11,7 @@ function Community() {
   const [messageContent, setMessageContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [hasScrolledOnce, setHasScrolledOnce] = useState(false);
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const editorRef = useRef(null);
@@ -63,10 +64,13 @@ function Community() {
     };
   }, []);
 
-  // Auto scroll to bottom when new messages arrive
+  // Auto scroll to bottom only on first load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!hasScrolledOnce && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setHasScrolledOnce(true);
+    }
+  }, [messages, hasScrolledOnce]);
 
   const handleSendMessage = async () => {
     const content = editorRef.current?.innerHTML || '';
