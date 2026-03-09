@@ -246,59 +246,6 @@ ollama pull mistral
 6. **Configure Alerts**: Set up Slack/Email notifications for critical findings
 7. **Community Collaboration**: Use the Community page to discuss security topics with AI assistance
 
-## Demo
-
-### Application Screenshots
-
-The following screenshots demonstrate the key features and user interface of SentinelOps:
-
-#### Landing Page
-![Hero Page](demo/HeroPage.png)
-*Professional landing page with feature overview and call-to-action*
-
-#### Security Dashboard
-![Dashboard Overview](demo/dashboard1.png)
-*Comprehensive security metrics and vulnerability distribution*
-
-![Dashboard Analytics](demo/dashboard2.png)
-*Real-time scan results with severity-based categorization*
-
-#### Vulnerability Management
-![Vulnerabilities](demo/Vulnerabilites.png)
-*Detailed vulnerability listing with remediation guidance*
-
-#### Community Platform
-![Community Chat](demo/community1.png)
-*Collaborative platform for security discussions*
-
-![AI-Powered Assistant](demo/CommunityAiPilot.png)
-*Sentinel AI assistant providing cloud security guidance*
-
-#### Notification System
-![Slack Integration](demo/SlackNotification.png)
-*Real-time Slack notifications for critical security findings*
-
-![Email Reports](demo/EmailReport.png)
-*Automated email delivery of security assessment reports*
-
-#### Pricing Plans
-![Pricing](demo/PricingPlans.png)
-*Flexible pricing tiers for organizations of all sizes*
-
-### Video Demonstration
-
-A comprehensive video demonstration showcasing the complete workflow, features, and capabilities of SentinelOps is available:
-
-**[View Demo Video](demo/Project_demo.mp4)**
-
-The demo video covers:
-- User authentication and onboarding
-- Cloud account configuration
-- Security scan execution across multiple cloud providers
-- Vulnerability analysis and prioritization
-- Report generation and distribution
-- Community platform features
-- AI-powered assistance
 
 ## Security and Privacy
 
