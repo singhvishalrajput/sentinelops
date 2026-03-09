@@ -6,7 +6,18 @@ const axios = require('axios');
 
 // Mistral LLM Configuration
 const MISTRAL_API_URL = 'http://localhost:11434/api/generate';
+const MISTRAL_TAGS_URL = 'http://localhost:11434/api/tags';
 const AI_TRIGGER = '@sentinel';
+
+// Check if Mistral/Ollama is available
+async function isMistralAvailable() {
+  try {
+    await axios.get(MISTRAL_TAGS_URL, { timeout: 3000 });
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
 // System prompt to restrict AI to cloud security topics
 const SYSTEM_PROMPT = `You are Sentinel, an AI assistant specialized in cloud security, AWS, Azure, and cloud infrastructure. 
@@ -111,7 +122,13 @@ async function generateAIResponse(userMessage, user) {
 
     console.log('🔍 Processing question:', question);
 
-    // Call Mistral LLM
+    // Check if Mistral is available first
+    const isAvailable = await isMistralAvailable();
+    if (!isAvailable) {
+      throw new Error('MISTRAL_UNAVAILABLE');
+    }
+
+    // Call Mistral LLM with increased timeout
     const llmResponse = await axios.post(MISTRAL_API_URL, {
       model: 'mistral',
       prompt: `${SYSTEM_PROMPT}\n\nUser Question: ${question}\n\nAssistant:`,
@@ -121,7 +138,7 @@ async function generateAIResponse(userMessage, user) {
         num_predict: 500 // Limit response length
       }
     }, {
-      timeout: 30000 // 30 second timeout
+      timeout: 60000 // 60 second timeout (increased from 30)
     });
 
     const aiResponseText = llmResponse.data.response.trim();
@@ -133,6 +150,7 @@ async function generateAIResponse(userMessage, user) {
       content: `<div class="ai-response">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px;">
           <span style="font-size: 20px;">🤖</span>
+          <span style="color: white; font-weight: bold;">Sentinel AI-Pilot</span>
         </div>
         <div style="line-height: 1.6;">${aiResponseText.replace(/\n/g, '<br>')}</div>
       </div>`,
@@ -145,15 +163,29 @@ async function generateAIResponse(userMessage, user) {
   } catch (error) {
     console.error('❌ Error generating AI response:', error.message);
     
+    // Determine specific error message
+    let errorMessage = 'Sorry, I\'m currently unavailable. Please try again later or ask the community!';
+    
+    if (error.message === 'MISTRAL_UNAVAILABLE') {
+      errorMessage = '⚠️ <strong>Mistral AI is not running.</strong><br><br>Please ensure Ollama is installed and running with the Mistral model:<br><code>ollama run mistral</code><br><br>You can ask the community in the meantime!';
+    } else if (error.code === 'ECONNREFUSED') {
+      errorMessage = '⚠️ <strong>Cannot connect to AI service.</strong><br><br>The Mistral server is not responding. Please check if Ollama is running on port 11434.';
+    } else if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      errorMessage = '⏱️ <strong>AI response timed out.</strong><br><br>The model is taking too long to respond. Please try a simpler question or ask the community!';
+    } else if (error.response?.status === 404) {
+      errorMessage = '⚠️ <strong>Mistral model not found.</strong><br><br>Please install the Mistral model:<br><code>ollama pull mistral</code>';
+    }
+    
     // Create error message
     try {
       await CommunityMessage.create({
         userId: user._id,
         content: `<div class="ai-response">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 8px;">
             <span style="font-size: 20px;">🤖</span>
+            <span style="color: white; font-weight: bold;">Sentinel AI-Pilot</span>
           </div>
-          <div style="line-height: 1.6; color: #ef4444;">Sorry, I'm currently unavailable. Please try again later or ask the community!</div>
+          <div style="line-height: 1.6;">${errorMessage}</div>
         </div>`,
         isAIResponse: true
       });
